@@ -1,0 +1,28 @@
+[Header]
+"IEMFileVersion,4"
+Investigator NameCM
+"Experiment Name,scMIDAS2_TecRev"
+"Date,1/29/2026"
+"Workflow,GenerateFASTQ"
+"Application,FASTQ Only"
+"Assay,Nextera"
+"Description,sc5VDJ"
+"Chemistry,Amplicon"
+"Module,B"
+
+[Reads]
+28
+90
+
+[Settings]
+ReverseComplement0
+
+[Data]
+"Species,Sample_ID,Sample_Name,index10X"
+"human,Tec_Rev_batch08_GEX,Tec_Rev_batch08_GEX,SI-TT-G9"
+"human,Tec_Rev_batch09_GEX,Tec_Rev_batch09_GEX,SI-TT-H9"
+"human,Tec_Rev_batch10_GEX,Tec_Rev_batch10_GEX,SI-TT-G10"
+"human,MIDAS_2_batch62_GEX,MIDAS_2_batch62_GEX,SI-TT-C11"
+"human,Tec_Rev_batch08_VDJ,Tec_Rev_batch08_VDJ,SI-TT-H10"
+"human,Tec_Rev_batch09_VDJ,Tec_Rev_batch09_VDJ,SI-TT-A11"
+"human,Tec_Rev_batch10_VDJ,Tec_Rev_batch10_VDJ,SI-TT-B11"
