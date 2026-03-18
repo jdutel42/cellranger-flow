@@ -1,0 +1,67 @@
+# ==============================================================================
+# Configuration MultiQC pour le pipeline sc10x
+# ==============================================================================
+
+title: "sc10x Pipeline — Single-Cell 10x Genomics QC Report"
+subtitle: "Cell Ranger 7.2.0 | MultiQC 1.21"
+intro_text: >
+    Ce rapport agrège les métriques QC issues de Cell Ranger pour tous les
+    samples traités par le pipeline sc10x_pipeline.
+
+report_comment: >
+    Pipeline sc10x_pipeline v1.0.0 — DSL2 Nextflow
+
+# Modules à inclure (dans l'ordre d'affichage)
+module_order:
+    - cellranger
+    - custom_content
+
+# Paramètres d'affichage
+show_analysis_paths: true
+show_analysis_time: true
+
+# Seuils QC Cell Ranger (pour coloration conditionnelle dans les tableaux)
+custom_data:
+    cellranger_qc_thresholds:
+        id: "cellranger_thresholds"
+        section_name: "Seuils QC Cell Ranger"
+        description: "Seuils utilisés pour le contrôle qualité."
+        plot_type: "table"
+
+# Colonnes à afficher en priorité dans les tableaux récapitulatifs
+table_columns_placement:
+    cellranger:
+        estimated_number_of_cells: 100
+        mean_reads_per_cell: 200
+        median_genes_per_cell: 300
+        number_of_reads: 400
+        sequencing_saturation: 500
+        fraction_reads_in_cells: 600
+        median_umi_counts_per_cell: 700
+        total_genes_detected: 800
+
+# Seuils pour coloration conditionnelle (vert/jaune/rouge)
+table_columns_visible:
+    cellranger:
+        estimated_number_of_cells: true
+        mean_reads_per_cell: true
+        median_genes_per_cell: true
+        sequencing_saturation: true
+        fraction_reads_in_cells: true
+
+# Couleurs des échantillons (généré automatiquement si non spécifié)
+# sample_names_rename:
+#     - - "old_name"
+#       - "new_display_name"
+
+# Export des données
+export_plots: true
+plots_force_interactive: false
+make_data_dir: true
+data_format: "tsv"
+
+# Compression des données de sortie
+compress_zip: false
+
+# Logging
+log_filesize_limit: 100000000   # 100 MB max par fichier de log
