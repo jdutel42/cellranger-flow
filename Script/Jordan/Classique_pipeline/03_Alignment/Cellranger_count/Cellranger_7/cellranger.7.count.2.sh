@@ -1,5 +1,6 @@
 #!/bin/bash
-# Cellranger multi script for multiple samples
+
+# Script cellranger multi script for multiple samples
 # One job by sample
 # steps : Configuration file, slurm script,job  
 
