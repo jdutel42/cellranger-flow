@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Script     : Loop_slurm_job_cellranger_multi_7_GEX_VDJ.sh
+# Script     : Loop_slurm_job_cellranger_multi_9_GEX_VDJ.sh
 # Project    : Routine pipeline for single cell RNA-seq data processing (10x Genomics)
 # Description: Submit SLURM jobs for cellranger multi (GEX + VDJ) per sample. 
 #              Generates a CSV configuration file, a SLURM script, and submits the job. One job per sample.
-# Usage      : bash Loop_slurm_job_cellranger_multi_7_GEX_VDJ.sh [--dry-run] [--force]
+# Usage      : bash Loop_slurm_job_cellranger_multi_9_GEX_VDJ.sh [--dry-run] [--force]
 #              --dry-run  : generates SLURM scripts without submitting jobs (for testing)
 #              --force    : overwrites existing SLURM scripts and configuration files without prompting
 # Author     : Jordan Dutel
@@ -51,11 +51,11 @@ readonly FASTQ_FOLDER_VDJ="midas/fastq/H7VCHDMX2"
 readonly PATH_SAMPLE_SHEET="/home/dutel/Sample_sheet"   # Sample sheet folder (template and sample-specific configs)
 readonly PATH_SAMPLE_SHEET_TEMPLATE="${PATH_SAMPLE_SHEET}/Template" # Template config folder
 readonly PATH_SAMPLE_SHEET_SAMPLE="${PATH_SAMPLE_SHEET}/Sample"     # Sample-specific config folder
-readonly PATH_SLURM_SCRIPTS="/home/dutel/Script/Jordan/Classique_pipeline/03_Alignment/Cellranger_multi/Cellranger_7/Slurm_job_cellranger_multi_7_GEX_VDJ"  # SLURM scripts folder
+readonly PATH_SLURM_SCRIPTS="/home/dutel/Script/Jordan/Classique_pipeline/03_Alignment/Cellranger_multi/Cellranger_9/GEX_VDJ/Slurm_job_cellranger_multi_9_GEX_VDJ"  # SLURM scripts folder
 readonly PATH_OUTPUT="/labos/UGM/Recherche/midas/output"   # CellRanger output folder
 
 # --- CellRanger ---
-readonly CELLRANGER_BIN="/labos/UGM/dev/cellranger-7.1.0/bin/cellranger"
+readonly CELLRANGER_BIN="/labos/UGM/dev/cellranger-9.0.1/bin/cellranger"
 
 # --- SLURM ---
 readonly SLURM_PARTITION="phoenix"
@@ -210,11 +210,11 @@ check_fastq() {
 generate_slurm_script() {
     local batch="$1"
     local conf_sample="${PATH_SAMPLE_SHEET_SAMPLE}/config_sample_${batch}.csv"
-    local script="${PATH_SLURM_SCRIPTS}/Slurm_job_cellranger_multi_7_GEX_VDJ_${batch}_${TODAY}.sh"
+    local script="${PATH_SLURM_SCRIPTS}/Slurm_job_cellranger_multi_9_GEX_VDJ_${batch}_${TODAY}.sh"
 
     # Remove existing script if it exists and --force is specified
     if [[ "${FORCE}" == true ]] && [[ -f "${script}" ]]; then
-        log_warn "SLURM script already exists for ${batch}, forced removal : ${script}"
+        log_warn "Script SLURM déjà présent pour ${batch}, suppression forcée : ${script}"
         rm "${script}"
     fi
 
@@ -233,8 +233,8 @@ generate_slurm_script() {
 #SBATCH --job-name=cellranger_multi_${batch}
 #SBATCH --cpus-per-task=${SLURM_CPUS}
 #SBATCH --mem=${SLURM_MEM}
-#SBATCH --error=/home/dutel/logs/${TODAY}.Slurm_job_cellranger_multi_7_GEX_VDJ_${batch}.%j.err
-#SBATCH --output=/home/dutel/logs/${TODAY}.Slurm_job_cellranger_multi_7_GEX_VDJ_${batch}.%j.out
+#SBATCH --error=/home/dutel/logs/${TODAY}.Slurm_job_cellranger_multi_9_GEX_VDJ_${batch}.%j.err
+#SBATCH --output=/home/dutel/logs/${TODAY}.Slurm_job_cellranger_multi_9_GEX_VDJ_${batch}.%j.out
 
 set -euo pipefail
 
@@ -309,8 +309,8 @@ main() {
     mkdir -p "$(dirname "${LOG_FILE}")"
 
     log_info "========================================================"
-    log_info "Starting ${SCRIPT_NAME}"
-    log_info "Dry-run : ${DRY_RUN} | Force : ${FORCE}"
+    log_info "Démarrage de ${SCRIPT_NAME}"
+    log_info "Mode dry-run : ${DRY_RUN} | Force : ${FORCE}"
     log_info "Batches      : ${BATCH_IDS[*]}"
     log_info "========================================================"
 

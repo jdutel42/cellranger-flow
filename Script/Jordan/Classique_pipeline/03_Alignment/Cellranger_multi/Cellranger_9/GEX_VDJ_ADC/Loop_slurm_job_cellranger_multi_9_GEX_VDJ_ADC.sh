@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # ==============================================================================
-# Script     : Loop_slurm_job_cellranger_multi_7_GEX_VDJ.sh
+# Script     : Loop_slurm_job_cellranger_multi_9_GEX_VDJ_ADC.sh
 # Project    : Routine pipeline for single cell RNA-seq data processing (10x Genomics)
-# Description: Submit SLURM jobs for cellranger multi (GEX + VDJ) per sample. 
+# Description: Submit SLURM jobs for cellranger multi (GEX + VDJ + ADC) per sample. 
 #              Generates a CSV configuration file, a SLURM script, and submits the job. One job per sample.
-# Usage      : bash Loop_slurm_job_cellranger_multi_7_GEX_VDJ.sh [--dry-run] [--force]
+# Usage      : bash Loop_slurm_job_cellranger_multi_9_GEX_VDJ_ADC.sh [--dry-run] [--force]
 #              --dry-run  : generates SLURM scripts without submitting jobs (for testing)
 #              --force    : overwrites existing SLURM scripts and configuration files without prompting
 # Author     : Jordan Dutel
@@ -41,17 +41,27 @@ BATCH_IDS=(62)
 # --- References ---
 readonly PATH_REF_GEX="/labos/UGM/dev/cellranger-pipe/refdata-gex-GRCh38-2020-A"
 readonly PATH_REF_VDJ="/labos/UGM/dev/cellranger-pipe/refdata-cellranger-vdj-GRCh38-alts-ensembl-7.0.0"
+readonly PATH_REF_ADC="/home/dutel/data/reference/other/antibody_capture/feature.csv"
+readonly SAMPLE_ORDER=(M2 M3 M4 M5 M6)
+declare -A SAMPLE_HASHTAGS=(
+    ["M2"]="TotalSeqC_Hashtag_C0302"
+    ["M3"]="TotalSeqC_Hashtag_C0303"
+    ["M4"]="TotalSeqC_Hashtag_C0304"
+    ["M5"]="TotalSeqC_Hashtag_C0305"
+    ["M6"]="TotalSeqC_Hashtag_C0306"
+)
 
 # --- FASTQ ---
 readonly PATH_FASTQ="/labos/UGM/Recherche"
 readonly FASTQ_FOLDER_GEX="TecNantes/fastq/H7VW2DMX2"
 readonly FASTQ_FOLDER_VDJ="midas/fastq/H7VCHDMX2"
+readonly FASTQ_FOLDER_ADC="midas/fastq/H7VCHDMX2"
 
 # --- Output paths ---
 readonly PATH_SAMPLE_SHEET="/home/dutel/Sample_sheet"   # Sample sheet folder (template and sample-specific configs)
 readonly PATH_SAMPLE_SHEET_TEMPLATE="${PATH_SAMPLE_SHEET}/Template" # Template config folder
 readonly PATH_SAMPLE_SHEET_SAMPLE="${PATH_SAMPLE_SHEET}/Sample"     # Sample-specific config folder
-readonly PATH_SLURM_SCRIPTS="/home/dutel/Script/Jordan/Classique_pipeline/03_Alignment/Cellranger_multi/Cellranger_7/Slurm_job_cellranger_multi_7_GEX_VDJ"  # SLURM scripts folder
+readonly PATH_SLURM_SCRIPTS="/home/dutel/Script/Jordan/Classique_pipeline/03_Alignment/Cellranger_multi/Cellranger_9/Slurm_job_cellranger_multi_9_GEX_VDJ_ADC"  # SLURM scripts folder
 readonly PATH_OUTPUT="/labos/UGM/Recherche/midas/output"   # CellRanger output folder
 
 # --- CellRanger ---
@@ -105,10 +115,10 @@ check_dependencies() {
 
 # Check that critical directories exist
 check_directories() {
-    local dirs=("${PATH_REF_GEX}" "${PATH_REF_VDJ}" "${PATH_FASTQ}" \
+    local dirs=("${PATH_REF_GEX}" "${PATH_REF_VDJ}" "${PATH_REF_ADC}" "${PATH_FASTQ}" \
                 "${PATH_SAMPLE_SHEET}" "${PATH_SLURM_SCRIPTS}" "${PATH_OUTPUT}" \
                 "${PATH_SAMPLE_SHEET_TEMPLATE}" "${PATH_SAMPLE_SHEET_SAMPLE}" \
-                "${PATH_FASTQ}/${FASTQ_FOLDER_GEX}" "${PATH_FASTQ}/${FASTQ_FOLDER_VDJ}")
+                "${PATH_FASTQ}/${FASTQ_FOLDER_GEX}" "${PATH_FASTQ}/${FASTQ_FOLDER_VDJ}" "${PATH_FASTQ}/${FASTQ_FOLDER_ADC}")
     for d in "${dirs[@]}"; do
         if [[ ! -d "${d}" ]]; then
             die "Directory not found : ${d}"
@@ -125,19 +135,23 @@ check_directories() {
 
 # Generate a common template configuration file if it does not exist
 generate_config_template() {
-    local conf="${PATH_SAMPLE_SHEET_TEMPLATE}/config_template.csv"
+    local conf="${PATH_SAMPLE_SHEET}/Template/config_template.csv"
 
     if [[ -f "${conf}" ]]; then
-        log_info "Configuration template already exists : ${conf}"
+        log_info "Template de configuration déjà présent : ${conf}"
         return 0
     fi
 
-    log_info "Creating configuration template : ${conf}"
+    log_info "Création du template de configuration : ${conf}"
     cat > "${conf}" <<EOF
 [gene-expression]
 ref,${PATH_REF_GEX}
-no-bam,FALSE
+create-bam,TRUE
 no-secondary,FALSE
+check-library-compatibility,FALSE
+
+[feature]
+ref,${PATH_REF_ADC}
 
 [vdj]
 ref,${PATH_REF_VDJ}
@@ -158,24 +172,42 @@ generate_sample_config() {
         rm "${conf_sample}"
     fi
 
-    log_info "Generating configuration for ${batch} : ${conf_sample}"
+    log_info "Génération de la config pour ${batch} : ${conf_sample}"
     cp "${conf_template}" "${conf_sample}" # Copy template to sample-specific config before appending sample-specific entries
 
     # Append sample-specific FASTQ entries to the config file
-    printf '%s,%s,any,%s,Gene Expression,\n' \
-        "${batch}_GEX" \
-        "${PATH_FASTQ}/${FASTQ_FOLDER_GEX}" \
-        "${batch}_GEX" >> "${conf_sample}"
+    {
+        printf '%s,%s,any,%s,Gene Expression,\n' \
+            "${batch}_GEX" \
+            "${PATH_FASTQ}/${FASTQ_FOLDER_GEX}" \
+            "${batch}_GEX"
 
-    printf '%s,%s,any,%s,VDJ,\n' \
-        "${batch}_VDJ" \
-        "${PATH_FASTQ}/${FASTQ_FOLDER_VDJ}" \
-        "${batch}_VDJ" >> "${conf_sample}"
+        printf '%s,%s,any,%s,VDJ,\n' \
+            "${batch}_VDJ" \
+            "${PATH_FASTQ}/${FASTQ_FOLDER_VDJ}" \
+            "${batch}_VDJ"
+
+        printf '%s,%s,any,%s,Antibody Capture,\n' \
+            "${batch}_prot" \
+            "${PATH_FASTQ}/${FASTQ_FOLDER_ADC}" \
+            "${batch}_prot"
+    } >> "${conf_sample}"
+
+    # Append sample-specific entries for the [samples] section
+    {
+        printf '\n[samples]\n'
+        printf 'sample_id,hashtag_ids\n'
+        for sample_id in "${SAMPLE_ORDER[@]}"; do
+            printf '%s,%s\n' "${sample_id}" "${SAMPLE_HASHTAGS[${sample_id}]}"
+        done
+    } >> "${conf_sample}"
+
+    log_info "Specific-sample configuration file generated : ${conf_sample}"
 }
 
 # ==============================================================================
 #  II. VERIFICATION OF INPUT FASTQ FILES
-#  - Check that FASTQ files for GEX and VDJ exist for the given batch
+#  - Check that FASTQ files for GEX VDJ and ADC exist for the given batch
 #  - Uses a secure globbing method to avoid issues with special characters
 # ==============================================================================
 
@@ -183,6 +215,7 @@ check_fastq() {
     local batch="$1"
     local gex_pattern="${PATH_FASTQ}/${FASTQ_FOLDER_GEX}/${batch}_GEX"
     local vdj_pattern="${PATH_FASTQ}/${FASTQ_FOLDER_VDJ}/${batch}_VDJ"
+    local adc_pattern="${PATH_FASTQ}/${FASTQ_FOLDER_ADC}/${batch}_prot"
     local ok=true
 
     # Use find with -name to check for the presence of FASTQ files matching the expected pattern (glob patterns)
@@ -198,6 +231,12 @@ check_fastq() {
         ok=false
     fi
 
+    if ! find "${PATH_FASTQ}/${FASTQ_FOLDER_ADC}" \
+            -maxdepth 1 -name "${batch}_prot*.fastq.gz" | grep -q .; then
+        log_error "FASTQ ADC not found : ${adc_pattern}*.fastq.gz"
+        ok=false
+    fi
+
     [[ "${ok}" == true ]]
 }
 
@@ -210,7 +249,7 @@ check_fastq() {
 generate_slurm_script() {
     local batch="$1"
     local conf_sample="${PATH_SAMPLE_SHEET_SAMPLE}/config_sample_${batch}.csv"
-    local script="${PATH_SLURM_SCRIPTS}/Slurm_job_cellranger_multi_7_GEX_VDJ_${batch}_${TODAY}.sh"
+    local script="${PATH_SLURM_SCRIPTS}/Slurm_job_cellranger_multi_9_GEX_VDJ_ADC_${batch}_${TODAY}.sh"
 
     # Remove existing script if it exists and --force is specified
     if [[ "${FORCE}" == true ]] && [[ -f "${script}" ]]; then
@@ -233,8 +272,8 @@ generate_slurm_script() {
 #SBATCH --job-name=cellranger_multi_${batch}
 #SBATCH --cpus-per-task=${SLURM_CPUS}
 #SBATCH --mem=${SLURM_MEM}
-#SBATCH --error=/home/dutel/logs/${TODAY}.Slurm_job_cellranger_multi_7_GEX_VDJ_${batch}.%j.err
-#SBATCH --output=/home/dutel/logs/${TODAY}.Slurm_job_cellranger_multi_7_GEX_VDJ_${batch}.%j.out
+#SBATCH --error=/home/dutel/logs/${TODAY}.Slurm_job_cellranger_multi_9_GEX_VDJ_ADC_${batch}.%j.err
+#SBATCH --output=/home/dutel/logs/${TODAY}.Slurm_job_cellranger_multi_9_GEX_VDJ_ADC_${batch}.%j.out
 
 set -euo pipefail
 
@@ -372,3 +411,158 @@ main() {
 }
 
 main "$@"
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+########################################################
+#           Initialization                             #  
+########################################################
+
+# sample are called batch[number]_[CD45plus | Tcell]
+# for each batch, two samples : CD45plus and Tcell 
+
+# Input sample name
+protocol_prefix="MIDAS_2" 
+#batch=$(seq -f "${protocol_prefix}_batch%02g" 8 9 10)
+# batch=$(for i in $(seq 3 7); do echo -n "${protocol_prefix}_batch0$i "; done) # output_4
+batch=$(for i in 62; do echo -n "${protocol_prefix}_batch$i "; done) # output_4
+# batch=$(for i in 62; do echo -n "${protocol_prefix}_batch$i "; done) # output_4
+
+
+# Reference
+path_ref_gex=/labos/UGM/dev/cellranger-pipe/refdata-gex-GRCh38-2020-A
+path_ref_vdj=/labos/UGM/dev/cellranger-pipe/refdata-cellranger-vdj-GRCh38-alts-ensembl-7.0.0
+
+# Input fastq
+#path_fastq=/labos/UGM/Recherche/midas/fastq
+path_fastq=/labos/UGM/Recherche
+#fastq_folder_gex=H7VCHDMX2
+fastq_folder_gex=TecNantes/fastq/H7VW2DMX2
+#fastq_folder_vdj=${fastq_folder_gex}
+fastq_folder_vdj=midas/fastq/H7VCHDMX2
+
+# Output & intermediary files
+path_libraries=/home/dutel/Sample_sheet # configuration file .csv folder
+path_script=/home/dutel/script/cr_multi_jobs # where to save slurm job scripts
+output=/labos/UGM/Recherche/midas/output # cellranger output folder 
+
+today=$(date +%Y%m%d) 
+
+########################################################
+#           I Configuration file                       #
+########################################################
+
+# Configuration file template (to be ran 1 time)
+conf=${path_libraries}/config.csv
+if ! [ -f ${conf} ]; then
+    echo -e "[gene-expression] 
+    ref,${path_ref}
+    no-bam,FALSE
+    no-secondary,FALSE \n\n ">>$conf
+
+    echo -e "[vdj] 
+    ref,${path_ref_vdj} \n\n">> $conf
+
+
+    echo "[libraries]">>$conf
+    echo "fastq_id,fastqs,lanes,physical_library_id,feature_types,subsample_rate" >>$conf
+fi
+
+
+
+for b in ${batch};do
+
+    echo $b
+
+    # check for output folder
+    if [ -d ${output}/${b} ]; then
+        echo Error output folder already exist
+        exit -1
+    fi 
+
+    # copy and rename template according batch number (b) and cell type (t). 
+    conf2=${path_libraries}/config.${b}.csv
+    #echo $conf2
+    if [ -f ${conf2} ]; then
+         rm -i $conf2 # ask to rm configuration if the file exists
+    fi
+    # Specify all input library data (sample specific) if configuration file does not exist
+    if ! [ -f ${conf2} ]; then
+        cp ${conf} ${conf2} 
+        echo "${b}_GEX, ${path_fastq}/${fastq_folder_gex},any,${b}_GEX, Gene Expression,  ">> $conf2
+        echo "${b}_VDJ, ${path_fastq}/${fastq_folder_vdj},any,${b}_VDJ, VDJ,  ">> $conf2
+    fi
+    #nano $conf2
+done
+
+########################################################
+#           II Writte slurm script                     #
+########################################################
+
+# Writte one script by sample eg MIDAS_batch10_CD45plus
+for b in ${batch};do
+
+    conf2=${path_libraries}/config.${b}.csv
+    # check for GEX fastq
+    fastqgex=("${path_fastq}/${fastq_folder_gex}/${b}_GEX"*.fastq.gz)
+    if [ ${#fastqgex[@]} -eq 0 ]; then
+        echo "missing fastq GEX in ${fastq_folder_gex}"
+        continue
+    fi
+    # check for vdj fastq 
+    fastqvdj=("${path_fastq}/${fastq_folder_vdj}/${b}_VDJ"*.fastq.gz)
+    if [ ${#fastqvdj[@]} -eq 0 ]; then
+        echo "missing fastq VDJ in ${fastq_folder_vdj}"
+        continue
+    fi
+    # Create slurm script 
+    script=/home/dutel/script/cr_multi_jobs/cr.multi_${b}_${today}.sh
+    test -f $script && rm -r $script # delete slurm script if it exist 
+
+    # Slurm headers
+    echo -e "#!/bin/bash \
+    \n#SBATCH --partition=phoenix \
+    \n#SBATCH --mail-user=jordan.dutel@inserm.fr \
+    \n#SBATCH --mail-type=END,FAIL \
+    \n#SBATCH --job-name=CRm${b} \
+    \n#SBATCH --cpus-per-task=12 \
+    \n#SBATCH --mem=40gb \
+    \n#SBATCH --error=/home/dutel/logs/$today.cr_multi.${b}.%j.err \
+    \n#SBATCH --output=/home/dutel/logs/$today.cr_multi.${b}.%j.out\n" >> $script
+
+    # Main function (cellranger multi) 
+    echo "/labos/UGM/dev/cellranger-7.1.0/bin/cellranger multi \\
+    --id=${b} \\
+    --csv=${conf2}" >> $script     
+
+########################################################
+#           III Send Job                               #
+########################################################
+        
+    # go to working (=output) directory
+    cd ${output}
+        
+    sbatch ${script}
+  
+done
+
+
+
+
