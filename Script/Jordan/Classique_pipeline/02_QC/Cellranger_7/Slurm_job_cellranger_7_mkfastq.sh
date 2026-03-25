@@ -27,18 +27,18 @@ conda activate /labos/UGM/dev/envs/shared/178265b579c72c6695d48557d4eadac6_
 #                  Input                 #
 ##########################################
 
-RUN_ID="260304_A01789_0434_BHJKHTDRX7"
+RUN_ID="260323_A01789_0447_AHCHNTDMX2"
 BCL_DIR="/sequenceurs/NovaSeq1/${RUN_ID}"
-SAMPLE_SHEET="/home/dutel/samplesheet/Index_mkfastq_${RUN_ID}.csv"
+SAMPLE_SHEET="/home/dutel/data/samplesheet/Modified/Index_mkfastq_${RUN_ID}.csv"
 
 ##########################################
 #                 Output                 #
 ##########################################
 
-OUT_DIR="/labos/UGM/Recherche/Bi-spe"
+OUT_DIR="/labos/UGM/Recherche/midas/fastq2"
 
 ##########################################
-#                 Verif                 #
+#                 Verif                  #
 ##########################################
 
 # Verify that the BCL directory exist

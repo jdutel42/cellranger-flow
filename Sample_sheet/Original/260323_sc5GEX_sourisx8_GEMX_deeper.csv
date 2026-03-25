@@ -1,0 +1,29 @@
+[Header]
+"IEMFileVersion,4"
+"Investigator Name,CM"
+"Experiment Name,sc5GEX_sourisx8_deeper"
+"Date,3/23/2026"
+"Workflow,GenerateFASTQ"
+"Application,FASTQ Only"
+"Assay,Nextera"
+"Description,scVDJ"
+"Chemistry,Amplicon"
+"Module,B"
+
+[Reads]
+28
+90
+
+[Settings]
+"ReverseComplement,0"
+
+[Data]
+"Species,Sample_ID,Sample_Name,index10X"
+"Mouse,LN_KO_IG_GEX,LN_KO_IG_GEX,SI-TT-F12"
+"Mouse,LN_KO_BIT_GEX,LN_KO_BIT_GEX,SI-TT-G12"
+"Mouse,LN_WT_IG_GEX,LN_WT_IG_GEX,SI-TT-A2"
+"Mouse,LN_WT_BIT_GEX,LN_WT_BIT_GEX,SI-TT-B2"
+"Mouse,T_KO_IG_GEX,T_KO_IG_GEX,SI-TT-C2"
+"Mouse,T_KO_BIT_GEX,T_KO_BIT_GEX,SI-TT-D2"
+"Mouse,T_WT_IG_GEX,T_WT_IG_GEX,SI-TT-E2"
+"Mouse,T_WT_BIT_GEX,T_WT_BIT_GEX,SI-TT-F2"

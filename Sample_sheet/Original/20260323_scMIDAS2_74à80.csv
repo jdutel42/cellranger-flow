@@ -1,0 +1,35 @@
+[Header]
+"IEMFileVersion,4"
+Investigator NameCM
+"Experiment Name,scMIDAS2"
+"Date,3/23/2026"
+"Workflow,GenerateFASTQ"
+"Application,FASTQ Only"
+"Assay,Nextera"
+"Description,sc5VDJ"
+"Chemistry,Amplicon"
+"Module,A"
+
+[Reads]
+28
+90
+
+[Settings]
+ReverseComplement0
+
+[Data]
+"Species,Sample_ID,Sample_Name,index10X"
+"human,MIDAS_2_batch74_GEX,MIDAS_2_batch74_GEX,SI-TT-C5"
+"human,MIDAS_2_batch75_GEX,MIDAS_2_batch75_GEX,SI-TT-D5"
+"human,MIDAS_2_batch76_GEX,MIDAS_2_batch76_GEX,SI-TT-E5"
+"human,MIDAS_2_batch77_GEX,MIDAS_2_batch77_GEX,SI-TT-A1"
+"human,MIDAS_2_batch78_GEX,MIDAS_2_batch78_GEX,SI-TT-B1"
+"human,MIDAS_2_batch79_GEX,MIDAS_2_batch79_GEX,SI-TT-C1"
+"human,MIDAS_2_batch80_GEX,MIDAS_2_batch80_GEX,SI-TT-D1"
+"human,MIDAS_2_batch74_VDJ,MIDAS_2_batch74_VDJ,SI-TT-F5"
+"human,MIDAS_2_batch75_VDJ,MIDAS_2_batch75_VDJ,SI-TT-G5"
+"human,MIDAS_2_batch76_VDJ,MIDAS_2_batch76_VDJ,SI-TT-H5"
+"human,MIDAS_2_batch77_VDJ,MIDAS_2_batch77_VDJ,SI-TT-E1"
+"human,MIDAS_2_batch78_VDJ,MIDAS_2_batch78_VDJ,SI-TT-F1"
+"human,MIDAS_2_batch79_VDJ,MIDAS_2_batch79_VDJ,SI-TT-G1"
+"human,MIDAS_2_batch80_VDJ,MIDAS_2_batch80_VDJ,SI-TT-H1"
