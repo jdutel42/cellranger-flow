@@ -1,13 +1,13 @@
 /*
 ========================================================================================
-    SOUS-WORKFLOW : FASTQ_TO_COUNT
+    SUB-WORKFLOW : FASTQ_TO_COUNT
 ========================================================================================
-    Description : Orchestre l'alignement / quantification directement à partir de FASTQ
-                  pré-existants. Chaque sample est traité en parallèle.
-    Étapes      :
-        1. CELLRANGER_COUNT (FASTQ par sample → matrices + métriques)
+    Description : Orchestrates alignment / quantification directly from existing
+                  FASTQ files. Each sample is processed in parallel.
+    Steps       :
+        1. CELLRANGER_COUNT (FASTQ per sample -> matrices + metrics)
 ----------------------------------------------------------------------------------------
-    Convention attendue pour le dossier d'entrée :
+    Expected input directory convention:
         <input_dir>/
           <sample_id_1>/
             <sample_id_1>_S1_L001_R1_001.fastq.gz
@@ -38,38 +38,38 @@ workflow FASTQ_TO_COUNT {
         ch_versions = Channel.empty()
 
         // -----------------------------------------------------------------------
-        // Validation et logging des samples détectés
+        // Validate and log detected samples
         // -----------------------------------------------------------------------
         ch_validated_fastqs = ch_fastq_dirs.map { sample_id, fastq_dir ->
 
-            // Vérification de l'existence du dossier
+            // Check directory exists
             if (!fastq_dir.exists()) {
-                error "ERREUR (FASTQ_TO_COUNT): Le dossier FASTQ du sample '${sample_id}' n'existe pas : ${fastq_dir}"
+                error "ERROR (FASTQ_TO_COUNT): FASTQ directory for sample '${sample_id}' does not exist: ${fastq_dir}"
             }
 
-            // Vérification qu'au moins un FASTQ R1 et R2 est présent
+            // Ensure at least one R1 and one R2 FASTQ are present
             def r1_files = fastq_dir.list().findAll { it =~ /_R1_.*\\.fastq\\.gz$/ }
             def r2_files = fastq_dir.list().findAll { it =~ /_R2_.*\\.fastq\\.gz$/ }
 
             if (r1_files.isEmpty()) {
-                log.warn "ATTENTION: Aucun fichier R1 trouvé pour le sample '${sample_id}' dans ${fastq_dir}. Sample ignoré."
+                log.warn "WARNING: No R1 file found for sample '${sample_id}' in ${fastq_dir}. Sample skipped."
                 return null
             }
             if (r2_files.isEmpty()) {
-                log.warn "ATTENTION: Aucun fichier R2 trouvé pour le sample '${sample_id}' dans ${fastq_dir}. Sample ignoré."
+                log.warn "WARNING: No R2 file found for sample '${sample_id}' in ${fastq_dir}. Sample skipped."
                 return null
             }
 
-            log.info "  Sample FASTQ validé : ${sample_id} (${r1_files.size()} fichiers R1, ${r2_files.size()} fichiers R2)"
+            log.info "  FASTQ sample validated: ${sample_id} (${r1_files.size()} R1 files, ${r2_files.size()} R2 files)"
             return tuple(sample_id, fastq_dir)
         }
         .filter { it != null }
 
-        // Référence génomique partagée entre tous les samples
+        // Shared genome reference for all samples
         ch_genome = Channel.value(file(params.genome_reference, checkIfExists: true))
 
         // -----------------------------------------------------------------------
-        // ÉTAPE 1 : Alignement et quantification (un job par sample en parallèle)
+        // STEP 1: Alignment and quantification (one parallel job per sample)
         // -----------------------------------------------------------------------
         CELLRANGER_COUNT(ch_validated_fastqs, ch_genome)
 

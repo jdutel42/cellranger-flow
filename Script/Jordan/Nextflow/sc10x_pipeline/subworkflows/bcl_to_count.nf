@@ -1,12 +1,12 @@
 /*
 ========================================================================================
-    SOUS-WORKFLOW : BCL_TO_COUNT
+    SUB-WORKFLOW : BCL_TO_COUNT
 ========================================================================================
-    Description : Orchestre la conversion BCL → FASTQ puis l'alignement / quantification
-                  pour tous les samples. Gère la parallélisation par sample après mkfastq.
-    Étapes      :
-        1. CELLRANGER_MKFASTQ  (BCL + sample sheet → FASTQ par sample)
-        2. CELLRANGER_COUNT    (FASTQ par sample → matrices + métriques)
+    Description : Orchestrates BCL -> FASTQ conversion, then alignment / quantification
+                  for all samples. Handles per-sample parallelization after mkfastq.
+    Steps       :
+        1. CELLRANGER_MKFASTQ  (BCL + sample sheet -> FASTQ per sample)
+        2. CELLRANGER_COUNT    (FASTQ per sample -> matrices + metrics)
 ----------------------------------------------------------------------------------------
     Inputs :
         ch_bcl_input : Channel[ tuple(bcl_dir, sample_sheet) ]
@@ -32,9 +32,9 @@ workflow BCL_TO_COUNT {
         ch_versions = Channel.empty()
 
         // -----------------------------------------------------------------------
-        // ÉTAPE 1 : Conversion BCL → FASTQ
+        // STEP 1: BCL -> FASTQ conversion
         // -----------------------------------------------------------------------
-        // Ajout d'un identifiant de run basé sur le nom du dossier BCL
+        // Add a run identifier based on BCL directory name
         ch_mkfastq_input = ch_bcl_input.map { bcl_dir, sample_sheet ->
             def run_id = bcl_dir.name.replaceAll(/[^a-zA-Z0-9_-]/, '_')
             return tuple(run_id, bcl_dir, sample_sheet)
@@ -45,43 +45,43 @@ workflow BCL_TO_COUNT {
         ch_versions = ch_versions.mix(CELLRANGER_MKFASTQ.out.versions.first())
 
         // -----------------------------------------------------------------------
-        // ÉTAPE 2 : Détection des dossiers FASTQ par sample après mkfastq
+        // STEP 2: Detect FASTQ sample directories after mkfastq
         //
-        // Structure de sortie de mkfastq :
+        // mkfastq output structure:
         //   fastq_output/
-        //     Sample_A/   ← un dossier par sample
+        //     Sample_A/   <- one directory per sample
         //       Sample_A_S1_L001_R1_001.fastq.gz
         //       Sample_A_S1_L001_R2_001.fastq.gz
         //     Sample_B/
         //       ...
         //
-        // On "explose" le channel pour obtenir un tuple (sample_id, fastq_dir)
-        // par sample détecté dans fastq_output/.
+        // Expand the channel to produce one tuple (sample_id, fastq_dir)
+        // per detected sample in fastq_output/.
         // -----------------------------------------------------------------------
         ch_count_input = CELLRANGER_MKFASTQ.out.fastqs
             .flatMap { run_id, fastq_dirs ->
-                // fastq_dirs peut être un Path ou une liste de Paths
+                // fastq_dirs can be a Path or a list of Paths
                 def dirs = fastq_dirs instanceof List ? fastq_dirs : [fastq_dirs]
                 dirs
                     .findAll { it.isDirectory() }
                     .collect { dir ->
                         def sample_id = dir.name
-                        log.info "  Sample détecté après mkfastq : ${sample_id}"
+                        log.info "  Sample detected after mkfastq: ${sample_id}"
                         return tuple(sample_id, dir)
                     }
             }
 
-        // Vérification qu'au moins un sample a été trouvé
+        // Ensure at least one sample was found
         ch_count_input.ifEmpty {
-            error "ERREUR (BCL_TO_COUNT): Aucun dossier de sample trouvé après mkfastq. " +
-                  "Vérifiez la sample sheet et les données BCL."
+            error "ERROR (BCL_TO_COUNT): No sample directory found after mkfastq. " +
+                "Check the sample sheet and BCL data."
         }
 
-        // Référence génomique partagée entre tous les samples
+        // Shared genome reference for all samples
         ch_genome = Channel.value(file(params.genome_reference, checkIfExists: true))
 
         // -----------------------------------------------------------------------
-        // ÉTAPE 3 : Alignement et quantification (un job par sample en parallèle)
+        // STEP 3: Alignment and quantification (one parallel job per sample)
         // -----------------------------------------------------------------------
         CELLRANGER_COUNT(ch_count_input, ch_genome)
 

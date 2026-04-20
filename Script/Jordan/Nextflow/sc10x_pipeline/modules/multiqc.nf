@@ -2,13 +2,13 @@
 ========================================================================================
     MODULE : MULTIQC
 ========================================================================================
-    Description : Agrège tous les rapports QC de Cell Ranger (web_summaries, metrics)
-                  en un rapport MultiQC HTML unique.
+    Description : Aggregates all Cell Ranger QC reports (web_summaries, metrics)
+                  into a single MultiQC HTML report.
     Outil       : MultiQC 1.21
     Container   : quay.io/biocontainers/multiqc:1.21--pyhdfd78af_0
 ----------------------------------------------------------------------------------------
     Inputs :
-        path(qc_files)       → Liste de tous les fichiers QC à agréger (collected)
+        path(qc_files)       -> List of all QC files to aggregate (collected)
     Outputs :
         path "multiqc_report.html"   → ch_report
         path "multiqc_data/"         → ch_data
@@ -18,7 +18,7 @@
 
 process MULTIQC {
 
-    tag "multiqc | agrégation QC globale"
+    tag "multiqc | global QC aggregation"
     label 'process_medium'
 
     container 'quay.io/biocontainers/multiqc:1.21--pyhdfd78af_0'
@@ -30,7 +30,7 @@ process MULTIQC {
     )
 
     input:
-        path qc_files   // Collection de tous les fichiers QC (metrics_summary.csv, web_summary.html, logs)
+        path qc_files   // Collection of all QC files (metrics_summary.csv, web_summary.html, logs)
 
     output:
         path "multiqc_report.html", emit: report
@@ -48,22 +48,22 @@ process MULTIQC {
 
         """
         # -----------------------------------------------------------------------
-        # Vérification des inputs
+        # Input checks
         # -----------------------------------------------------------------------
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Démarrage MultiQC"
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Fichiers QC reçus :"
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting MultiQC"
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Received QC files:"
         ls -la .
 
         FILE_COUNT=\$(ls -1 | wc -l)
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] \$FILE_COUNT fichier(s) à analyser."
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] \$FILE_COUNT file(s) to analyze."
 
         if [ "\$FILE_COUNT" -eq 0 ]; then
-            echo "[ERREUR] Aucun fichier QC fourni à MultiQC." >&2
+            echo "[ERROR] No QC files provided to MultiQC." >&2
             exit 1
         fi
 
         # -----------------------------------------------------------------------
-        # Exécution de MultiQC
+        # Run MultiQC
         # -----------------------------------------------------------------------
         multiqc \\
             ${multiqc_title} \\
@@ -79,22 +79,22 @@ process MULTIQC {
         EXIT_CODE=\$?
 
         # -----------------------------------------------------------------------
-        # Vérification du succès
+        # Verify successful execution
         # -----------------------------------------------------------------------
         if [ \$EXIT_CODE -ne 0 ]; then
-            echo "[ERREUR] MultiQC a échoué avec le code \$EXIT_CODE." >&2
+            echo "[ERROR] MultiQC failed with exit code \$EXIT_CODE." >&2
             exit \$EXIT_CODE
         fi
 
         if [ ! -f "multiqc_report.html" ]; then
-            echo "[ERREUR] Le rapport MultiQC HTML n'a pas été généré." >&2
+            echo "[ERROR] MultiQC HTML report was not generated." >&2
             exit 1
         fi
 
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] MultiQC terminé. Rapport : multiqc_report.html"
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] MultiQC completed. Report: multiqc_report.html"
 
         # -----------------------------------------------------------------------
-        # Enregistrement de la version de l'outil
+        # Record tool version
         # -----------------------------------------------------------------------
         cat <<-END_VERSIONS > versions.yml
         "${task.process}":

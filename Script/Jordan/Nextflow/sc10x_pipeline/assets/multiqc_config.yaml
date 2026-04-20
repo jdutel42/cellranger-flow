@@ -1,34 +1,34 @@
 # ==============================================================================
-# Configuration MultiQC pour le pipeline sc10x
+# MultiQC configuration for the sc10x pipeline
 # ==============================================================================
 
 title: "sc10x Pipeline — Single-Cell 10x Genomics QC Report"
 subtitle: "Cell Ranger 7.2.0 | MultiQC 1.21"
 intro_text: >
-    Ce rapport agrège les métriques QC issues de Cell Ranger pour tous les
-    samples traités par le pipeline sc10x_pipeline.
+    This report aggregates Cell Ranger QC metrics for all samples
+    processed by the sc10x_pipeline workflow.
 
 report_comment: >
     Pipeline sc10x_pipeline v1.0.0 — DSL2 Nextflow
 
-# Modules à inclure (dans l'ordre d'affichage)
+# Modules to include (in display order)
 module_order:
     - cellranger
     - custom_content
 
-# Paramètres d'affichage
+# Display parameters
 show_analysis_paths: true
 show_analysis_time: true
 
-# Seuils QC Cell Ranger (pour coloration conditionnelle dans les tableaux)
+# Cell Ranger QC thresholds (for conditional table coloring)
 custom_data:
     cellranger_qc_thresholds:
         id: "cellranger_thresholds"
-        section_name: "Seuils QC Cell Ranger"
-        description: "Seuils utilisés pour le contrôle qualité."
+        section_name: "Cell Ranger QC Thresholds"
+        description: "Thresholds used for quality control."
         plot_type: "table"
 
-# Colonnes à afficher en priorité dans les tableaux récapitulatifs
+# Columns to prioritize in summary tables
 table_columns_placement:
     cellranger:
         estimated_number_of_cells: 100
@@ -40,7 +40,7 @@ table_columns_placement:
         median_umi_counts_per_cell: 700
         total_genes_detected: 800
 
-# Seuils pour coloration conditionnelle (vert/jaune/rouge)
+# Thresholds for conditional coloring (green/yellow/red)
 table_columns_visible:
     cellranger:
         estimated_number_of_cells: true
@@ -49,19 +49,19 @@ table_columns_visible:
         sequencing_saturation: true
         fraction_reads_in_cells: true
 
-# Couleurs des échantillons (généré automatiquement si non spécifié)
+# Sample colors (auto-generated if not specified)
 # sample_names_rename:
 #     - - "old_name"
 #       - "new_display_name"
 
-# Export des données
+# Data export
 export_plots: true
 plots_force_interactive: false
 make_data_dir: true
 data_format: "tsv"
 
-# Compression des données de sortie
+# Output data compression
 compress_zip: false
 
 # Logging
-log_filesize_limit: 100000000   # 100 MB max par fichier de log
+log_filesize_limit: 100000000   # 100 MB max per log file

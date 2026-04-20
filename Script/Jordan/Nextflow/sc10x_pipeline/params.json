@@ -1,0 +1,11 @@
+{
+    "sample_sheet": "/Script/Nextflow/sample_sheet.csv",
+    "run_id": "H155HGF51",
+    
+    "input_type": "fastq",
+    "input_dir": "/Data/fastq/",
+    "output_dir": "results/",
+    "genome": "Data/genome/refdata-gex-mm10-2020-A",
+    "localcores": 4,
+    "localmem": "16 GB"
+}

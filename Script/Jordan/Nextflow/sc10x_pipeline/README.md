@@ -1,123 +1,123 @@
-# sc10x_pipeline — Single-Cell 10x Genomics Pipeline (DSL2)
+# sc10x_pipeline - Single-Cell 10x Genomics Pipeline (DSL2)
 
-Pipeline Nextflow DSL2 pour le traitement automatisé de données **Single-Cell 10x Genomics**,
-depuis les fichiers BCL ou FASTQ jusqu'aux matrices de comptage et rapports QC.
+Nextflow DSL2 pipeline for automated processing of **Single-Cell 10x Genomics** data,
+from BCL or FASTQ files to count matrices and QC reports.
 
 ---
 
-## Table des matières
+## Table of Contents
 
-1. [Architecture du projet](#architecture)
-2. [Prérequis](#prérequis)
+1. [Project Architecture](#architecture)
+2. [Prerequisites](#prerequisites)
 3. [Installation](#installation)
-4. [Paramètres](#paramètres)
-5. [Exemples de commandes](#exemples)
-6. [Structure des sorties](#sorties)
-7. [Compatibilité nf-core](#nf-core)
+4. [Parameters](#parameters)
+5. [Command Examples](#examples)
+6. [Output Structure](#outputs)
+7. [nf-core Compatibility](#nf-core)
 
 ---
 
-## Architecture du projet <a name="architecture"></a>
+## Project Architecture <a name="architecture"></a>
 
 ```
 sc10x_pipeline/
-├── main.nf                          ← Point d'entrée principal
-├── nextflow.config                  ← Configuration globale + profils
+├── main.nf                          <- Main entry point
+├── nextflow.config                  <- Global configuration + profiles
 │
-├── modules/                         ← Modules atomiques (1 process = 1 outil)
-│   ├── cellranger_mkfastq.nf        ← BCL → FASTQ
-│   ├── cellranger_count.nf          ← FASTQ → matrices + métriques
-│   └── multiqc.nf                   ← Agrégation QC
+├── modules/                         <- Atomic modules (1 process = 1 tool)
+│   ├── cellranger_mkfastq.nf        <- BCL -> FASTQ
+│   ├── cellranger_count.nf          <- FASTQ -> matrices + metrics
+│   └── multiqc.nf                   <- QC aggregation
 │
-├── subworkflows/                    ← Sous-workflows réutilisables
-│   ├── bcl_to_count.nf              ← mkfastq → count (mode BCL)
-│   └── fastq_to_count.nf            ← count direct (mode FASTQ)
+├── subworkflows/                    <- Reusable sub-workflows
+│   ├── bcl_to_count.nf              <- mkfastq -> count (BCL mode)
+│   └── fastq_to_count.nf            <- direct count (FASTQ mode)
 │
 ├── assets/
-│   ├── sample_sheet.csv             ← Exemple de sample sheet Cell Ranger
-│   └── multiqc_config.yaml          ← Configuration MultiQC
+│   ├── sample_sheet.csv             <- Example Cell Ranger sample sheet
+│   └── multiqc_config.yaml          <- MultiQC configuration
 │
 └── README.md
 ```
 
-### Flux de données
+### Data Flow
 
 ```
-Mode BCL :
+BCL mode:
   [BCL dir] + [sample_sheet.csv]
-      │
-      ▼
+      |
+      v
   CELLRANGER_MKFASTQ
-      │
-      ▼ (un dossier FASTQ par sample)
-  CELLRANGER_COUNT ×N  (parallèle)
-      │
-      ▼
-  MULTIQC  (agrégation)
+      |
+      v (one FASTQ directory per sample)
+  CELLRANGER_COUNT xN  (parallel)
+      |
+      v
+  MULTIQC  (aggregation)
 
-Mode FASTQ :
+FASTQ mode:
   [input_dir/sample_1/] [input_dir/sample_2/] ...
-      │
-      ▼ (détection automatique)
-  CELLRANGER_COUNT ×N  (parallèle)
-      │
-      ▼
-  MULTIQC  (agrégation)
+      |
+      v (automatic detection)
+  CELLRANGER_COUNT xN  (parallel)
+      |
+      v
+  MULTIQC  (aggregation)
 ```
 
 ---
 
-## Prérequis <a name="prérequis"></a>
+## Prerequisites <a name="prerequisites"></a>
 
-| Outil       | Version minimale | Rôle                        |
-|-------------|------------------|-----------------------------|
-| Nextflow    | 23.10.0          | Orchestrateur de pipeline   |
-| Docker      | 20.x+            | Conteneurisation (local)    |
-| Singularity | 3.8+             | Conteneurisation (HPC)      |
-| Java        | 11+              | Runtime Nextflow            |
+| Tool        | Minimum version | Role                         |
+|-------------|------------------|------------------------------|
+| Nextflow    | 23.10.0          | Pipeline orchestrator        |
+| Docker      | 20.x+            | Containerization (local)     |
+| Singularity | 3.8+             | Containerization (HPC)       |
+| Java        | 11+              | Nextflow runtime             |
 
-Les outils bioinformatiques (Cell Ranger, MultiQC) sont **embarqués dans les containers**
-et ne nécessitent pas d'installation manuelle.
+Bioinformatics tools (Cell Ranger, MultiQC) are **bundled in containers**
+and do not require manual installation.
 
 ---
 
 ## Installation <a name="installation"></a>
 
 ```bash
-# Cloner le dépôt
+# Clone repository
 git clone https://github.com/myorg/sc10x_pipeline.git
 cd sc10x_pipeline
 
-# Vérifier la version de Nextflow
-nextflow -version   # doit être >= 23.10.0
+# Check Nextflow version
+nextflow -version   # must be >= 23.10.0
 
-# Mettre à jour Nextflow si nécessaire
+# Update Nextflow if needed
 nextflow self-update
 ```
 
 ---
 
-## Paramètres <a name="paramètres"></a>
+## Parameters <a name="parameters"></a>
 
-| Paramètre          | Défaut                  | Description                                       |
-|--------------------|-------------------------|---------------------------------------------------|
-| `--input_type`     | `fastq`                 | `bcl` ou `fastq`                                  |
-| `--input_dir`      | (obligatoire)           | Dossier BCL ou racine des FASTQ                   |
-| `--output_dir`     | `./results`             | Dossier de sortie                                 |
-| `--genome_reference` | (obligatoire)         | Chemin vers la référence Cell Ranger pré-buildée  |
-| `--sample_sheet`   | (requis si BCL)         | Sample sheet CSV (format Cell Ranger)             |
-| `--localcores`     | `16`                    | CPUs alloués à Cell Ranger                        |
-| `--localmemory`    | `64`                    | RAM allouée en GB                                 |
-| `--chemistry`      | `auto`                  | Chimie 10x (ex: `SC3Pv3`, `SC5P-PE`)             |
-| `--expect_cells`   | `5000`                  | Nombre de cellules attendues par sample           |
-| `--include_introns`| `true`                  | Inclure les reads introniques                     |
-| `--force_cells`    | (désactivé)             | Forcer un nombre précis de cellules               |
+| Parameter            | Default               | Description                                  |
+|----------------------|-----------------------|----------------------------------------------|
+| `--input_type`       | `fastq`               | `bcl` or `fastq`                             |
+| `--input_dir`        | (required)            | BCL directory or FASTQ root directory        |
+| `--output_dir`       | `./results`           | Output directory                              |
+| `--genome_reference` | (required)            | Path to pre-built Cell Ranger reference      |
+| `--sample_sheet`     | (required if BCL)     | CSV sample sheet (Cell Ranger format)        |
+| `--localcores`       | `16`                  | CPUs allocated to Cell Ranger                |
+| `--localmemory`      | `64`                  | RAM allocated in GB                          |
+| `--chemistry`        | `auto`                | 10x chemistry (e.g. `SC3Pv3`, `SC5P-PE`)     |
+| `--expect_cells`     | `5000`                | Expected number of cells per sample          |
+| `--include_introns`  | `true`                | Include intronic reads                       |
+| `--force_cells`      | (disabled)            | Force a specific number of cells             |
 
 ---
 
-## Exemples de commandes <a name="exemples"></a>
+## Command Examples <a name="examples"></a>
 
-### Mode FASTQ — Docker (local)
+### FASTQ mode - Docker (local)
 
 ```bash
 nextflow run main.nf \
@@ -132,7 +132,7 @@ nextflow run main.nf \
     --include_introns true
 ```
 
-### Mode BCL — Singularity (local HPC)
+### BCL mode - Singularity (local HPC)
 
 ```bash
 nextflow run main.nf \
@@ -146,7 +146,7 @@ nextflow run main.nf \
     --localmemory 128
 ```
 
-### Mode BCL — SLURM + Singularity (cluster HPC)
+### BCL mode - SLURM + Singularity (HPC cluster)
 
 ```bash
 nextflow run main.nf \
@@ -161,14 +161,14 @@ nextflow run main.nf \
     -resume
 ```
 
-### Reprise d'un run interrompu
+### Resume an interrupted run
 
 ```bash
-# L'option -resume permet de reprendre sans recalculer les étapes déjà terminées
+# The -resume option continues without recomputing completed steps
 nextflow run main.nf -profile docker --input_type fastq ... -resume
 ```
 
-### Mode stub (test sans données réelles)
+### Stub mode (test without real data)
 
 ```bash
 nextflow run main.nf \
@@ -182,33 +182,33 @@ nextflow run main.nf \
 
 ---
 
-## Structure des sorties <a name="sorties"></a>
+## Output Structure <a name="outputs"></a>
 
 ```
 results/
 ├── cellranger_count/
 │   ├── Sample_A/
 │   │   └── outs/
-│   │       ├── filtered_feature_bc_matrix/   ← Matrices (MEX format)
+│   │       ├── filtered_feature_bc_matrix/   <- Matrices (MEX format)
 │   │       │   ├── matrix.mtx.gz
 │   │       │   ├── barcodes.tsv.gz
 │   │       │   └── features.tsv.gz
-│   │       ├── metrics_summary.csv           ← Métriques QC
-│   │       ├── web_summary.html              ← Rapport HTML Cell Ranger
-│   │       └── molecule_info.h5             ← Pour cellranger aggr
+│   │       ├── metrics_summary.csv           <- QC metrics
+│   │       ├── web_summary.html              <- Cell Ranger HTML report
+│   │       └── molecule_info.h5              <- For cellranger aggr
 │   └── Sample_B/
 │       └── outs/
 │           └── ...
 │
-├── mkfastq/                                  ← (mode BCL uniquement)
+├── mkfastq/                                  <- (BCL mode only)
 │   └── run_id_mkfastq/
 │       └── fastq_output/
 │           ├── Sample_A/
 │           └── Sample_B/
 │
 ├── multiqc/
-│   ├── multiqc_report.html                  ← Rapport QC global
-│   └── multiqc_data/                        ← Données brutes MultiQC
+│   ├── multiqc_report.html                   <- Global QC report
+│   └── multiqc_data/                         <- Raw MultiQC data
 │
 ├── logs/
 │   ├── mkfastq/
@@ -216,76 +216,76 @@ results/
 │   └── cellranger_count/
 │       └── count_*.log
 │
-└── pipeline_versions.txt                    ← Versions de tous les outils
+└── pipeline_versions.txt                     <- Versions of all tools
 ```
 
 ---
 
-## Compatibilité nf-core <a name="nf-core"></a>
+## nf-core Compatibility <a name="nf-core"></a>
 
-Ce pipeline suit les conventions nf-core pour faciliter son intégration :
+This pipeline follows nf-core conventions to facilitate integration.
 
-### Structure compatible nf-core
+### nf-core Compatible Structure
 
 ```
 sc10x_pipeline/
-├── bin/                             ← Scripts helper (check_samplesheet.py, etc.)
+├── bin/                             <- Helper scripts (check_samplesheet.py, etc.)
 ├── conf/
-│   ├── base.config                  ← Ressources par défaut
-│   ├── igenomes.config              ← Références IGENOMES
-│   └── modules.config               ← Options par module (ext.args)
+│   ├── base.config                  <- Default resources
+│   ├── igenomes.config              <- IGENOMES references
+│   └── modules.config               <- Module-level options (ext.args)
 ├── docs/
 │   ├── usage.md
 │   └── output.md
 ├── lib/
-│   ├── NfcoreSchema.groovy          ← Validation JSON schema
-│   └── WorkflowSc10x.groovy        ← Fonctions métier
+│   ├── NfcoreSchema.groovy          <- JSON schema validation
+│   └── WorkflowSc10x.groovy         <- Workflow helper functions
 ├── modules/
-│   └── nf-core/                    ← Modules nf-core (si utilisés)
+│   └── nf-core/                     <- nf-core modules (if used)
 ├── workflows/
-│   └── sc10x.nf                    ← Workflow principal (convention nf-core)
+│   └── sc10x.nf                     <- Main workflow (nf-core convention)
 ├── assets/
-│   ├── schema_input.json            ← Validation de la sample sheet
+│   ├── schema_input.json            <- Sample sheet validation
 │   └── multiqc_config.yaml
 ├── main.nf
 ├── nextflow.config
-├── nextflow_schema.json            ← Schéma de validation des paramètres
-└── CITATIONS.md                    ← Citations des outils
+├── nextflow_schema.json             <- Parameter validation schema
+└── CITATIONS.md                     <- Tool citations
 ```
 
-### Adaptations recommandées pour nf-core
+### Recommended nf-core Adaptations
 
-1. **`nextflow_schema.json`** : Valider les paramètres avec `nf-validation`.
-2. **`conf/modules.config`** : Centraliser les `ext.args` de chaque module.
-3. **`lib/WorkflowSc10x.groovy`** : Déplacer `validateParams()` et `printHeader()`.
-4. **`bin/check_samplesheet.py`** : Script Python de validation de la sample sheet.
-5. **`CITATIONS.md`** : Référencer Cell Ranger, MultiQC, Nextflow.
+1. **`nextflow_schema.json`**: Validate parameters with `nf-validation`.
+2. **`conf/modules.config`**: Centralize `ext.args` for each module.
+3. **`lib/WorkflowSc10x.groovy`**: Move `validateParams()` and `printHeader()` there.
+4. **`bin/check_samplesheet.py`**: Add Python sample sheet validation.
+5. **`CITATIONS.md`**: Reference Cell Ranger, MultiQC, and Nextflow.
 
-### Commande de validation nf-core
+### nf-core Validation Command
 
 ```bash
-# Installer nf-core tools
+# Install nf-core tools
 pip install nf-core
 
-# Valider la structure du pipeline
+# Validate pipeline structure
 nf-core lint .
 
-# Créer un pipeline à partir du template nf-core
+# Create a pipeline from nf-core template
 nf-core create --name sc10x --description "Single-Cell 10x Genomics Pipeline"
 ```
 
 ---
 
-## Outils et versions
+## Tools and Versions
 
-| Outil       | Version | Container                                          |
-|-------------|---------|-----------------------------------------------------|
+| Tool        | Version | Container                                          |
+|-------------|---------|----------------------------------------------------|
 | Cell Ranger | 7.2.0   | `nfcore/cellranger:7.2.0`                          |
 | MultiQC     | 1.21    | `quay.io/biocontainers/multiqc:1.21--pyhdfd78af_0` |
-| Nextflow    | 23.10+  | (moteur local)                                      |
+| Nextflow    | 23.10+  | (local engine)                                     |
 
 ---
 
-## Licence
+## License
 
-MIT © 2024 Bioinformatics Pipeline Team
+MIT (c) 2024 Bioinformatics Pipeline Team
