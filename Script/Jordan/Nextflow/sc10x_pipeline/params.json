@@ -1,11 +1,20 @@
 {
-    "sample_sheet": "/Script/Nextflow/sample_sheet.csv",
-    "run_id": "H155HGF51",
-    
-    "input_type": "fastq",
-    "input_dir": "/Data/fastq/",
-    "output_dir": "results/",
-    "genome": "Data/genome/refdata-gex-mm10-2020-A",
+    "run_id": "HCHNTDMX2",
+    "raw_sample_sheet_file_path": "/Data/Sample_sheet/raw_sample_sheet.csv",
+    "bcl_dir": "/sequenceurs/NovaSeq1/H155HGF51",
+    "genome_reference": "/Data/genome/refdata-gex-mm10-2020-A",
+    "output_dir": "/Result/",
+    "preprocessing_output_dir": "/Data/Sample_sheet/Modified/",
+    "qc_output_dir": "Result/QC/",
+    "alignment_output_dir": "Result/Alignment/",
+    "log_multiqc_output_dirdir": "Result/MultiQC/",
+    "log_dir": "Log/",
+    "preprocessing_log_dir": "Log/Preprocessing/",
+    "qc_log_dir": "Log/QC/",
+    "alignment_log_dir": "Log/Alignment/",
+    "multiqc_log_dir": "Log/MultiQC/",
+
+
     "localcores": 4,
     "localmem": "16 GB"
 }
