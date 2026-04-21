@@ -19,7 +19,7 @@
 process PREPROCESSING {
 
     // Tag and label for logging and resource allocation
-    tag "preprocess | run: ${run_id}" // Log the name of the input sample sheet
+    tag "preprocess | run_id: ${run_id}" // Log the name of the input sample sheet
     label 'process_low' // Use a low resource label since this is a lightweight step
 
     // Publish the standardized sample sheet to the output directory for reference

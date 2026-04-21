@@ -153,7 +153,6 @@ workflow {
     )
 
     // Capture outputs from CELLRANGER_MKFASTQ
-    ch_fastq_files = CELLRANGER_MKFASTQ.out.fastqs // Capture channel for FASTQ files
     ch_versions = ch_versions.mix(CELLRANGER_MKFASTQ.out.versions) // Capture channel for versions information (mix for cumulation across steps)
     
     log.info "✔ BCL to FASTQ processing completed. FASTQ files available at: ${params.qc_output_dir}"
@@ -162,23 +161,41 @@ workflow {
     // STEP 3: Perform Alignment with Cellranger Multi
     // -----------------------------------------------------------------------
     log.info "Step 3: Performing alignment with Cellranger Multi."
+
+    if (!params.batch_ids) {
+        error "ERROR: --batch_ids is required for Cellranger Multi (example: --batch_ids '74,75,76')."
+    }
+
+    def batch_values = (params.batch_ids instanceof List)
+        ? params.batch_ids.collect { value -> value.toString().trim() }
+        : params.batch_ids.toString().split(',').collect { value -> value.trim() }
+
+    batch_values = batch_values.findAll { value -> value }
+
+    if (!batch_values) {
+        error "ERROR: --batch_ids is empty after parsing."
+    }
+
+    def ch_batches = channel
+        .from(batch_values)
+        .map { batch_id -> tuple(params.run_id.toString(), "${params.protocol_prefix}_batch${batch_id}") }
     
     // Run CELLRANGER_MULTI module
     CELLRANGER_MULTI(
-        run_id: params.run_id, // Pass run_id for logging and output naming
-        fastq_files: ch_fastq_files, // Use the FASTQ files generated in the previous step
-        preprocessed_sample_sheet: ch_preprocessed_sample_sheet, // Use the standardized sample sheet from the first step
-        genome_reference: params.genome_reference, // Pass genome reference from params
-        multi_output_dir: params.multi_output_dir, // Pass output directory for Cellranger Multi results
-        multi_log_dir: params.multi_log_dir // Pass log directory for Cellranger Multi logs
+        ch_batches,
+        file(params.path_ref_gex, checkIfExists: true),
+        file(params.path_ref_vdj, checkIfExists: true),
+        params.path_fastq,
+        params.fastq_folder_gex,
+        params.fastq_folder_vdj,
+        params.alignment_output_dir,
+        params.alignment_log_dir
     )
 
     // Capture outputs from CELLRANGER_MULTI
-    ch_multi_output = CELLRANGER_MULTI.out.multi_output // Capture channel for Cellranger Multi output
     ch_versions = ch_versions.mix(CELLRANGER_MULTI.out.versions) // Capture channel for versions information (mix for cumulation across steps)
-    ch_multi_logs = CELLRANGER_MULTI.out.logs // Capture channel for Cellranger Multi logs
 
-    log.info "✔ Cellranger Multi processing completed. Results available at: ${params.multi_output_dir}"
+    log.info "✔ Cellranger Multi processing completed. Results available at: ${params.alignment_output_dir}"
 }
 
 // ========================================================================================

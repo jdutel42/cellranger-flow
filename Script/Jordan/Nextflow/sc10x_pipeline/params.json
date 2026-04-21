@@ -1,8 +1,10 @@
 {
     "run_id": "HCHNTDMX2",
+    "batch_ids": "74,75,76",
     "raw_sample_sheet_file_path": "/Data/Sample_sheet/raw_sample_sheet.csv",
     "bcl_dir": "/sequenceurs/NovaSeq1/H155HGF51",
     "genome_reference": "/Data/genome/refdata-gex-mm10-2020-A",
+    "config_template": "/Data/Sample_sheet/Template/config_template.csv",
     "output_dir": "/Result/",
     "preprocessing_output_dir": "/Data/Sample_sheet/Modified/",
     "qc_output_dir": "Result/QC/",

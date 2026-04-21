@@ -18,7 +18,7 @@
 process CELLRANGER_MKFASTQ {
 
     // Tag and label for logging and resource allocation
-    tag "mkfastq | run: ${run_id}" // Log the run ID for traceability
+    tag "mkfastq | run_id: ${run_id}" // Log the run ID for traceability
     label 'process_low' // Use a high resource label since this step can be computationally intensive
 
     // Container specification for reproducibility
@@ -43,7 +43,7 @@ process CELLRANGER_MKFASTQ {
     // Declare process inputs
     input:
         tuple val(run_id), path(bcl_dir), path(preprocessed_sample_sheet)
-        val qc_output_dir // Output directory for FASTQ files
+        val qc_output_dir // Output directory for FASTQ files (val because it's STRING path)
         val qc_log_dir // Log directory for QC logs
 
     // Output the generated FASTQ files, versions information, and logs
