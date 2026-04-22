@@ -43,6 +43,7 @@ process CELLRANGER_MULTI {
         pattern : "multi_output/**",
         saveAs  : { filename -> filename }
     )
+    
     publishDir (
         path    : alignment_log_dir, // Use the alignment log directory for Cellranger Multi logs
         mode    : 'copy',
