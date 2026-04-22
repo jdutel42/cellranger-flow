@@ -16,8 +16,6 @@
     "qc_log_dir": "Log/QC/",
     "alignment_log_dir": "Log/Alignment/",
     "multiqc_log_dir": "Log/MultiQC/",
-
-
     "localcores": 4,
     "localmem": "16 GB"
 }
