@@ -72,6 +72,7 @@ def validateParams() {
         if (current_version < params.min_nextflow_version) {
             error "[ERROR]: Nextflow version ${params.min_nextflow_version} or higher is required. Current version: ${current_version}"
         }
+    }
 
     // Check for pipeline version (optional, but can be used for traceability)
     if (!params.pipeline_version) {
@@ -102,7 +103,7 @@ def validateParams() {
 
     // Check for BCL directory
     if (!params.bcl_dir) {
-        error "[WARNING]: The --bcl_dir parameter is not specified. Default bcl_dir path will be set to: ${params.bcl_dir}"
+        log.warn "[WARNING]: The --bcl_dir parameter is not specified. Default bcl_dir path will be set to: ${params.bcl_dir}"
     } else {
         // Validate that the BCL directory exists and is a directory
         def bcl_path = file(params.bcl_dir)
@@ -135,11 +136,6 @@ def validateParams() {
         def batch_ids_list = params.batch_ids.toString().split(',')
         if (batch_ids_list.size() == 0) {
             error "[ERROR]: The --batch_ids parameter must contain at least one batch ID. Please provide a comma-separated list of batch IDs, e.g., '1,2,3'."
-        }
-        batch_ids_list.each { batch_id ->
-            if (!batch_id.trim().isInteger()) {
-                error "[ERROR]: Each batch ID in --batch_ids must be an integer. Invalid batch ID: '${batch_id}' in '${params.batch_ids}'. Please provide a comma-separated list of integer batch IDs, e.g., '1,2,3'."
-            }
         }
     }
 
@@ -441,7 +437,6 @@ workflow {
 
 
     log.info "✔ Pipeline completed successfully !"
-    
 
 
     workflow.onComplete {
@@ -452,6 +447,6 @@ workflow {
 
     workflow.onError {
         log.error "Pipeline failed: ${workflow.errorMessage}"
-    }
+    } 
 
 }

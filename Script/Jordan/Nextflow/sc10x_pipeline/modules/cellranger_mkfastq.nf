@@ -9,9 +9,9 @@
     Inputs :
         tuple val(run_id), path(bcl_dir), path(sample_sheet)
     Outputs :
-        tuple val(run_id), path("fastq_output") → ch_fastqs
-        path "logs/mkfastq_${run_id}.log"                    → ch_logs
-        path "versions.yml"                             → ch_versions
+        path("fastq_output_${run_id}")          → ch_fastqs
+        path "logs/mkfastq_${run_id}.log"       → ch_logs
+        path "versions.yml"                     → ch_versions
 ========================================================================================
 */
 
@@ -30,7 +30,7 @@ process CELLRANGER_MKFASTQ {
     publishDir (
         path    : qc_output_dir, // Use the QC output directory for FASTQ outputs
         mode    : 'copy', // Copy files to the output directory
-        pattern : "fastq_output/**/*.fastq.gz", // Publish all files generated in work/fastq_output/ to qc_output_dir directory. ** is used to include all subdirectories (e.g., lane1, lane2) where FASTQ files are generated
+        pattern : "fastq_output_${run_id}/**/*.fastq.gz", // Publish all files generated in work/fastq_output/ to qc_output_dir directory. ** is used to include all subdirectories (e.g., lane1, lane2) where FASTQ files are generated
     )
     
     // Publish logs to a dedicated directory
@@ -48,7 +48,7 @@ process CELLRANGER_MKFASTQ {
 
     // Output the generated FASTQ files, versions information, and logs
     output:
-        tuple val(run_id), path("fastq_output"), emit: fastqs
+        path("fastq_output_${run_id}"), emit: fastqs
         path "logs/mkfastq_${run_id}.log", emit: logs
         path "versions.yml", emit: versions
 
@@ -59,7 +59,7 @@ process CELLRANGER_MKFASTQ {
     set -euo pipefail 
 
     # Redirect all log (stdout and stderr) to a log file for this process
-    mkdir -p fastq_output logs
+    mkdir -p fastq_output_${run_id} logs
     exec > >(tee -a logs/mkfastq_${run_id}.log) 2>&1
 
     ##########################################
@@ -104,7 +104,7 @@ process CELLRANGER_MKFASTQ {
         --id="${run_id}" \\ 
         --run="${bcl_dir}" \\
         --csv="${preprocessed_sample_sheet}" \\
-        --output-dir=fastq_output \\
+        --output-dir=fastq_output_${run_id} \\
         --localcores=${task.cpus} \\
         --localmem=${task.memory.toGiga()} 
 
@@ -121,9 +121,9 @@ process CELLRANGER_MKFASTQ {
     fi
 
     # Ensure at least one FASTQ file was generated
-    FASTQ_COUNT=\$(find fastq_output -name "*.fastq.gz" | wc -l)
+    FASTQ_COUNT=\$(find fastq_output_${run_id} -name "*.fastq.gz" | wc -l)
     if [ "\$FASTQ_COUNT" -eq 0 ]; then
-        echo "[ERROR] No FASTQ files generated in fastq_output/" | tee -a logs/mkfastq_${run_id}.log
+        echo "[ERROR] No FASTQ files generated in fastq_output_${run_id}/" | tee -a logs/mkfastq_${run_id}.log
         exit 1
     fi
 
