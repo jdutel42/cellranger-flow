@@ -176,7 +176,6 @@ workflow {
         run_id: params.run_id, // Pass run_id for logging and output naming
         batch_id: ch_batch_id, // Pass the channel of batch identifiers
         fastq_folder: ch_fastqs, // Pass the channel of FASTQ directories generated from the previous step
-        fastqs: ch_fastqs, // Pass the channel of FASTQ directories generated from the previous step
         ref_gex: file(params.path_ref_gex, checkIfExists: true), // GEX reference from params
         ref_vdj: file(params.path_ref_vdj, checkIfExists: true), // VDJ reference from params
         alignment_output_dir: params.alignment_output_dir, // Pass output directory for Cellranger Multi results
@@ -211,14 +210,26 @@ workflow {
         multiqc_log_dir: params.multiqc_log_dir // Pass log directory for MultiQC logs
     )
 
+    ch_versions = ch_versions.mix(MULTIQC.out.versions)
+
+    log.info "✔ MultiQC completed. Report available at: ${params.multiqc_output_dir}"
+
+
+    log.info "✔ Pipeline completed successfully !"
     
 
 
-    
-    
-    
-    
-}    
+    workflow.onComplete {
+        log.info "Pipeline finished with status: ${workflow.success ? 'SUCCESS' : 'FAILED'}"
+        log.info "Duration: ${workflow.duration}"
+        log.info "Work dir: ${workflow.workDir}"
+    }
+
+    workflow.onError {
+        log.error "Pipeline failed: ${workflow.errorMessage}"
+    }
+
+}
 // ========================================================================================
 // GLOBAL ERROR HANDLING
 // ========================================================================================
