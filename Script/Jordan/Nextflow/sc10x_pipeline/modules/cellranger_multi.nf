@@ -18,19 +18,19 @@
         val alignment_output_dir                            → alignment output directory
         val alignment_log_dir                               → alignment log directory
     Outputs :
-        tuple val(batch), path("multi_output/${batch}/outs/filtered_feature_bc_matrix/") → ch_matrices
-        tuple val(batch), path("multi_output/${batch}/outs/metrics_summary.csv") → ch_metrics
-        tuple val(batch), path("multi_output/${batch}/outs/web_summary.html") → ch_web_summaries
-        tuple val(batch), path("multi_output/${batch}/outs/molecule_info.h5") → ch_molecule_info
+        tuple val(batch_id), path("multi_output/${batch_id}/outs/filtered_feature_bc_matrix/") → ch_matrices
+        tuple val(batch_id), path("multi_output/${batch_id}/outs/metrics_summary.csv") → ch_metrics
+        tuple val(batch_id), path("multi_output/${batch_id}/outs/web_summary.html") → ch_web_summaries
+        tuple val(batch_id), path("multi_output/${batch_id}/outs/molecule_info.h5") → ch_molecule_info
         path "versions.yml" → ch_versions
-        path "logs/*.log" → ch_logs
+        path "logs/multi_${batch_id}.log" → ch_logs
 ========================================================================================
 */
 
 process CELLRANGER_MULTI {
 
     // Tag and label for logging and resource allocation
-    tag "multi | batch: ${batch}"
+    tag "multi | batch: ${batch_id}" // Log the batch ID for traceability
     label 'process_high'
 
     // Use conda environment for reproducibility
@@ -46,67 +46,64 @@ process CELLRANGER_MULTI {
     publishDir (
         path    : alignment_log_dir, // Use the alignment log directory for Cellranger Multi logs
         mode    : 'copy',
-        pattern : "logs/*.log"
+        pattern : "logs/multi_${batch_id}.log"
     )
 
     input:
-        tuple val(run_id), val(batch)
+        tuple val(run_id), val(batch_id)
+        path fastq_folder
         path ref_gex
         path ref_vdj
-        val path_fastq
-        val fastq_folder_gex
-        val fastq_folder_vdj
         val alignment_output_dir // Output directory for Cellranger Multi results (val because it's STRING path)
         val alignment_log_dir // Log directory for Cellranger Multi logs (val because it's STRING)
 
     output:
-        tuple val(batch), path("multi_output/${batch}/outs/filtered_feature_bc_matrix/"), emit: matrices
-        tuple val(batch), path("multi_output/${batch}/outs/metrics_summary.csv"),         emit: metrics
-        tuple val(batch), path("multi_output/${batch}/outs/web_summary.html"),            emit: web_summaries
-        tuple val(batch), path("multi_output/${batch}/outs/molecule_info.h5"),            emit: molecule_info
-        path "versions.yml",                                                                  emit: versions
-        path "logs/*.log",                                                                    emit: logs
+        tuple val(batch_id), path("multi_output/${batch_id}/outs/metrics_summary.csv"),         emit: metrics
+        tuple val(batch_id), path("multi_output/${batch_id}/outs/web_summary.html"),            emit: web_summaries
+        path "versions.yml",                                                                    emit: versions
+        path "logs/multi_${batch_id}.log",                                                      emit: logs
 
     script:
         """
+        # ==============================================================================
+        # Logging and error handling setup
+        # ==============================================================================
+        # Stop execution on any error, undefined variable, or failed pipe command
         set -euo pipefail
 
+        # Create necessary directories for outputs and logs
         mkdir -p logs multi_output
 
-        FASTQ_GEX_DIR="${path_fastq}/${fastq_folder_gex}"
-        FASTQ_VDJ_DIR="${path_fastq}/${fastq_folder_vdj}"
+        # Define paths to FASTQ directories
+        FASTQ_GEX_DIR="${fastq_folder}"
+        FASTQ_VDJ_DIR="${fastq_folder}"
 
-        if [ ! -d "${path_fastq}" ]; then
-            echo "ERROR: FASTQ base directory does not exist: ${path_fastq}" >&2
+        # Verification of input files and directories
+        if [ ! -d "${fastq_folder}" ]; then
+            echo "ERROR: FASTQ base directory does not exist: ${fastq_folder}" >&2
             exit 1
         fi
 
-        if [ ! -d "\$FASTQ_GEX_DIR" ]; then
-            echo "ERROR: GEX FASTQ directory does not exist: \$FASTQ_GEX_DIR" >&2
+        if ! find "\$FASTQ_GEX_DIR" -maxdepth 1 -name "${batch_id}_GEX*.fastq.gz" | grep -q .; then
+            echo "ERROR: Missing GEX FASTQ files for ${batch_id} in \$FASTQ_GEX_DIR" >&2
             exit 1
         fi
 
-        if [ ! -d "\$FASTQ_VDJ_DIR" ]; then
-            echo "ERROR: VDJ FASTQ directory does not exist: \$FASTQ_VDJ_DIR" >&2
+        if ! find "\$FASTQ_VDJ_DIR" -maxdepth 1 -name "${batch_id}_VDJ*.fastq.gz" | grep -q .; then
+            echo "ERROR: Missing VDJ FASTQ files for ${batch_id} in \$FASTQ_VDJ_DIR" >&2
             exit 1
         fi
 
-        if ! find "\$FASTQ_GEX_DIR" -maxdepth 1 -name "${batch}_GEX*.fastq.gz" | grep -q .; then
-            echo "ERROR: Missing GEX FASTQ files for ${batch} in \$FASTQ_GEX_DIR" >&2
-            exit 1
-        fi
+        # Logging
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Start cellranger multi for batch ${batch_id}" \
+            | tee logs/multi_${batch_id}.log
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] run_id=${run_id}" | tee -a logs/multi_${batch_id}.log
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] cpus=${task.cpus} mem_gb=${task.memory.toGiga()}" | tee -a logs/multi_${batch_id}.log
 
-        if ! find "\$FASTQ_VDJ_DIR" -maxdepth 1 -name "${batch}_VDJ*.fastq.gz" | grep -q .; then
-            echo "ERROR: Missing VDJ FASTQ files for ${batch} in \$FASTQ_VDJ_DIR" >&2
-            exit 1
-        fi
-
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Start cellranger multi for batch ${batch}" \
-            | tee logs/multi_${batch}.log
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] run_id=${run_id}" | tee -a logs/multi_${batch}.log
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] cpus=${task.cpus} mem_gb=${task.memory.toGiga()}" | tee -a logs/multi_${batch}.log
-
-        cat > "config_sample_${batch}.csv" <<EOF
+        # ==============================================================================
+        # Create Cell Ranger multi config CSV for this batch
+        # ==============================================================================
+        cat > "config_sample_${batch_id}.csv" <<EOF
 [gene-expression]
 ref,${ref_gex}
 no-bam,FALSE
@@ -117,42 +114,45 @@ ref,${ref_vdj}
 
 [libraries]
 fastq_id,fastqs,lanes,physical_library_id,feature_types,subsample_rate
-${batch}_GEX,\$FASTQ_GEX_DIR,any,${batch}_GEX,Gene Expression,
-${batch}_VDJ,\$FASTQ_VDJ_DIR,any,${batch}_VDJ,VDJ,
+${batch_id}_GEX,\$FASTQ_GEX_DIR,any,${batch_id}_GEX,Gene Expression,
+${batch_id}_VDJ,\$FASTQ_VDJ_DIR,any,${batch_id}_VDJ,VDJ,
 EOF
 
+        # ==============================================================================
+        # Run Cell Ranger multi
+        # ==============================================================================
         cellranger multi \
-            --id="${batch}" \
-            --csv="config_sample_${batch}.csv" \
+            --id="${batch_id}" \
+            --csv="config_sample_${batch_id}.csv" \
             --localcores=${task.cpus} \
             --localmem=${task.memory.toGiga()} \
-            2>&1 | tee -a logs/multi_${batch}.log
+            2>&1 | tee -a logs/multi_${batch_id}.log
 
         EXIT_CODE=\${PIPESTATUS[0]}
 
         if [ \$EXIT_CODE -ne 0 ]; then
-            echo "[ERROR] cellranger multi failed (code \$EXIT_CODE) for ${batch}." | tee -a logs/multi_${batch}.log
+            echo "[ERROR] cellranger multi failed (code \$EXIT_CODE) for ${batch_id}." | tee -a logs/multi_${batch_id}.log
             exit \$EXIT_CODE
         fi
 
-        mv "${batch}" "multi_output/${batch}"
+        mv "${batch_id}" "multi_output/${batch_id}"
 
         REQUIRED_OUTPUTS=(
-            "multi_output/${batch}/outs/filtered_feature_bc_matrix/matrix.mtx.gz"
-            "multi_output/${batch}/outs/metrics_summary.csv"
-            "multi_output/${batch}/outs/web_summary.html"
-            "multi_output/${batch}/outs/molecule_info.h5"
+            "multi_output/${batch_id}/outs/filtered_feature_bc_matrix/matrix.mtx.gz"
+            "multi_output/${batch_id}/outs/metrics_summary.csv"
+            "multi_output/${batch_id}/outs/web_summary.html"
+            "multi_output/${batch_id}/outs/molecule_info.h5"
         )
 
         for output_file in "\${REQUIRED_OUTPUTS[@]}"; do
             if [ ! -f "\$output_file" ] && [ ! -d "\$output_file" ]; then
-                echo "[ERROR] Missing expected output: \$output_file" | tee -a logs/multi_${batch}.log
+                echo "[ERROR] Missing expected output: \$output_file" | tee -a logs/multi_${batch_id}.log
                 exit 1
             fi
         done
 
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] cellranger multi completed for ${batch}." \
-            | tee -a logs/multi_${batch}.log
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] cellranger multi completed for ${batch_id}." \
+            | tee -a logs/multi_${batch_id}.log
 
         # -----------------------------------------------------------------------
         # Record tool version

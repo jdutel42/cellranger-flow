@@ -10,7 +10,7 @@
         tuple val(run_id), path(bcl_dir), path(sample_sheet)
     Outputs :
         tuple val(run_id), path("fastq_output") → ch_fastqs
-        path "logs/*.log"                    → ch_logs
+        path "logs/mkfastq_${run_id}.log"                    → ch_logs
         path "versions.yml"                             → ch_versions
 ========================================================================================
 */
@@ -37,7 +37,7 @@ process CELLRANGER_MKFASTQ {
     publishDir (
         path    : qc_log_dir, // Use the QC log directory for logs
         mode    : 'copy', // Copy logs to the output directory
-        pattern : "logs/*.log" // Publish all log files generated in work/logs/ to qc_log_dir directory
+        pattern : "logs/mkfastq_${run_id}.log" // Publish all log files generated in work/logs/ to qc_log_dir directory
     )
 
     // Declare process inputs
@@ -49,7 +49,7 @@ process CELLRANGER_MKFASTQ {
     // Output the generated FASTQ files, versions information, and logs
     output:
         tuple val(run_id), path("fastq_output"), emit: fastqs
-        path "logs/*.log", emit: logs
+        path "logs/mkfastq_${run_id}.log", emit: logs
         path "versions.yml", emit: versions
 
     // Script section to run cellranger mkfastq

@@ -153,6 +153,7 @@ workflow {
     )
 
     // Capture outputs from CELLRANGER_MKFASTQ
+    ch_fastqs = CELLRANGER_MKFASTQ.out.fastqs // Capture channel for generated FASTQ files
     ch_versions = ch_versions.mix(CELLRANGER_MKFASTQ.out.versions) // Capture channel for versions information (mix for cumulation across steps)
     
     log.info "✔ BCL to FASTQ processing completed. FASTQ files available at: ${params.qc_output_dir}"
@@ -162,42 +163,60 @@ workflow {
     // -----------------------------------------------------------------------
     log.info "Step 3: Performing alignment with Cellranger Multi."
 
-    if (!params.batch_ids) {
-        error "ERROR: --batch_ids is required for Cellranger Multi (example: --batch_ids '74,75,76')."
-    }
+    // Convert the comma-separated batch IDs string into a list of batch id
+    batch_ids_list = params.batch_ids.toString().split(',') // Split the comma-separated batch IDs into a list of batch_id
 
-    def batch_values = (params.batch_ids instanceof List)
-        ? params.batch_ids.collect { value -> value.toString().trim() }
-        : params.batch_ids.toString().split(',').collect { value -> value.trim() }
-
-    batch_values = batch_values.findAll { value -> value }
-
-    if (!batch_values) {
-        error "ERROR: --batch_ids is empty after parsing."
-    }
-
-    def ch_batches = channel
-        .from(batch_values)
-        .map { batch_id -> tuple(params.run_id.toString(), "${params.protocol_prefix}_batch${batch_id}") }
+    // Create a channel with several elements (batch_id), each will be pass to a separate instance of CELLRANGER_MULTI, enabling parallel alignment across all requested batches.
+    ch_batch_id = channel
+        .from(batch_ids_list) // From the list of batch IDs
+        .map { batch_id -> "${params.protocol_prefix}_batch${batch_id}" } // Map each batch_id in batch_ids_list to a full_batch_name
     
     // Run CELLRANGER_MULTI module
     CELLRANGER_MULTI(
-        ch_batches,
-        file(params.path_ref_gex, checkIfExists: true),
-        file(params.path_ref_vdj, checkIfExists: true),
-        params.path_fastq,
-        params.fastq_folder_gex,
-        params.fastq_folder_vdj,
-        params.alignment_output_dir,
-        params.alignment_log_dir
+        run_id: params.run_id, // Pass run_id for logging and output naming
+        batch_id: ch_batch_id, // Pass the channel of batch identifiers
+        fastq_folder: ch_fastqs, // Pass the channel of FASTQ directories generated from the previous step
+        fastqs: ch_fastqs, // Pass the channel of FASTQ directories generated from the previous step
+        ref_gex: file(params.path_ref_gex, checkIfExists: true), // GEX reference from params
+        ref_vdj: file(params.path_ref_vdj, checkIfExists: true), // VDJ reference from params
+        alignment_output_dir: params.alignment_output_dir, // Pass output directory for Cellranger Multi results
+        alignment_log_dir: params.alignment_log_dir // Pass log directory for Cellranger Multi
     )
 
     // Capture outputs from CELLRANGER_MULTI
+    ch_metrics = CELLRANGER_MULTI.out.metrics // Capture channel for metrics summary
+    ch_web_summaries = CELLRANGER_MULTI.out.web_summaries // Capture channel for web summaries
     ch_versions = ch_versions.mix(CELLRANGER_MULTI.out.versions) // Capture channel for versions information (mix for cumulation across steps)
 
     log.info "✔ Cellranger Multi processing completed. Results available at: ${params.alignment_output_dir}"
-}
 
+    // -----------------------------------------------------------------------
+    // STEP 4: MultiQC report generation
+    // -----------------------------------------------------------------------
+    log.info "Step 4: Generating MultiQC report."
+    
+    // Combine metrics summaries and web summaries into a single channel for MultiQC input
+    ch_qc_files = 
+        ch_metrics.map { _batch_id, f -> f } // In ch_metrics (that is a tuple(batch_id, metrics_file_path)), extract the file path (f) for each batch_id and create a channel of metrics summary files
+        .mix(ch_web_summaries.map { _batch_id, f -> f }) 
+        // In ch_web_summaries (that is a tuple(batch_id, web_summary_file_path)), 
+        // extract the file path (f) for each batch_id and create a channel of web summary files 
+        // ==> then mix it with the channel of metrics summary files to create a single channel of QC files for MultiQC input, containing both metrics summaries and web summaries from all batches
+
+    // Run MULTIQC module
+    MULTIQC(
+        run_id: params.run_id, // Pass run_id for logging and output naming
+        qc_files: ch_qc_files.collect(), // Pass the channel of QC files collected (metrics summaries and web summaries) generated from Cellranger Multi
+        multiqc_output_dir: params.multiqc_output_dir, // Pass output directory for MultiQC results
+        multiqc_log_dir: params.multiqc_log_dir // Pass log directory for MultiQC logs
+    )
+
+
+    
+    
+    
+    
+}    
 // ========================================================================================
 // GLOBAL ERROR HANDLING
 // ========================================================================================
