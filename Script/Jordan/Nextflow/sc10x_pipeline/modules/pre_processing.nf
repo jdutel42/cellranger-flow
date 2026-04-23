@@ -12,7 +12,7 @@
         path(raw_sample_sheet)       -> Raw sample sheet (CSV)
     Outputs :
         path "Index_mkfastq_${run_id}.csv"   → ch_standardized_sheet
-        path "versions.yml"                    → ch_versions
+        path "versions.yml"                  → ch_versions
 ========================================================================================
 */
 
@@ -22,7 +22,7 @@ process PREPROCESSING {
     // A task is 1 execution of 1 process for 1 set of inputs. for exemple, cellranger_multi with run_id = HCHNTDMX2 and batch_id = 74 is a task
     // A tag is useful to differentiate tasks of the same process (e.g. cellranger_multi) with different inputs (e.g. batch_id) and thus to have different log files and job names in SLURM. The tag is defined in the modules.
     tag "${task.process.toLowerCase()}_${run_id}" // Log the name of the input sample sheet
-    label 'process_low' // Use a low resource label since this is a lightweight step
+    label 'process_high' // Use a high resource label since this is a lightweight step
 
     // Publish the standardized sample sheet to the output directory for reference
     // Publish the standardized sample sheet with a descriptive name
@@ -36,7 +36,7 @@ process PREPROCESSING {
     publishDir (
         path    : "${preprocessing_log_dir}",
         mode    : 'copy',
-        pattern : "Pre_processing.log"
+        pattern : "logs/${today_date}_Preprocessing.log"
     )
 
     // Declare process inputs
@@ -45,6 +45,7 @@ process PREPROCESSING {
     val run_id // run_id from params to use in logging and output naming
     val preprocessing_output_dir // Output directory for standardized sample sheet
     val preprocessing_log_dir // Log directory for preprocessing logs
+    val today_date // Today's date for logging and output naming
 
     // Output the standardized sample sheet and versions information
     output:
@@ -57,7 +58,9 @@ process PREPROCESSING {
 
     set -euo pipefail # Exit on error (set -e), undefined variable (set -u), or error in pipeline (set -o pipefail)
 
-    exec > >(tee Pre_processing.log) 2>&1
+    # Redirect all log (stdout and stderr) to a log file for this process
+    mkdir -p logs
+    exec > >(tee logs/${today_date}_Preprocessing.log) 2>&1
 
     # ============================================================================
     # Functions
@@ -147,6 +150,6 @@ process PREPROCESSING {
   awk: "\$(awk -W version 2>&1 | head -n1 | sed 's/\\t/ /g')"
 EOF
 
-    log_info "Preprocessing completed: Index_mkfastq_${run_id}.csv"
+    log_info "[INFO] Preprocessing completed: Index_mkfastq_${run_id}.csv"
     """
 }

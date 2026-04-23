@@ -21,6 +21,7 @@ include { PREPROCESSING       } from './modules/pre_processing'
 include { CELLRANGER_MKFASTQ  } from './modules/cellranger_mkfastq'
 include { CELLRANGER_MULTI    } from './modules/cellranger_multi'
 include { MULTIQC             } from './modules/multiqc'
+include { MERGE_VERSIONS      } from './modules/merge_versions'
 
 // ========================================================================================
 // IMPORTS SUB-WORKFLOWS
@@ -365,7 +366,8 @@ workflow {
         raw_sample_sheet_file_path: file(params.raw_sample_sheet_file_path, checkIfExists: true), // Access the raw sample sheet path from params
         run_id: params.run_id, // Pass run_id for logging and output naming
         preprocessing_output_dir: params.preprocessing_output_dir, // Pass output directory for standardized sample sheet
-        preprocessing_log_dir: params.preprocessing_log_dir // Pass log directory for preprocessing logs
+        preprocessing_log_dir: params.preprocessing_log_dir, // Pass log directory for preprocessing logs
+        today_date: params.today_date // Pass today's date for logging and output naming
     )
 
     // Capture outputs from PREPROCESSING
@@ -385,7 +387,8 @@ workflow {
         bcl_dir: params.bcl_dir, // BCL directory from params
         preprocessed_sample_sheet: ch_preprocessed_sample_sheet, // Use the standardized sample sheet from the previous step
         qc_output_dir: params.qc_output_dir, // Pass output directory for FASTQ files
-        qc_log_dir: params.qc_log_dir // Pass log directory for QC logs
+        qc_log_dir: params.qc_log_dir, // Pass log directory for QC logs
+        today_date: params.today_date // Pass today's date for logging and output naming
     )
 
     // Capture outputs from CELLRANGER_MKFASTQ
@@ -415,7 +418,8 @@ workflow {
         ref_gex: file(params.path_ref_gex, checkIfExists: true), // GEX reference from params
         ref_vdj: file(params.path_ref_vdj, checkIfExists: true), // VDJ reference from params
         alignment_output_dir: params.alignment_output_dir, // Pass output directory for Cellranger Multi results
-        alignment_log_dir: params.alignment_log_dir // Pass log directory for Cellranger Multi
+        alignment_log_dir: params.alignment_log_dir, // Pass log directory for Cellranger Multi
+        today_date: params.today_date // Pass today's date for logging and output naming
     )
 
     // Capture outputs from CELLRANGER_MULTI
@@ -443,22 +447,48 @@ workflow {
         run_id: params.run_id, // Pass run_id for logging and output naming
         qc_files: ch_qc_files.collect(), // Pass the channel of QC files collected (metrics summaries and web summaries) generated from Cellranger Multi
         multiqc_output_dir: params.multiqc_output_dir, // Pass output directory for MultiQC results
-        multiqc_log_dir: params.multiqc_log_dir // Pass log directory for MultiQC logs
+        multiqc_log_dir: params.multiqc_log_dir, // Pass log directory for MultiQC logs
+        today_date: params.today_date // Pass today's date for logging and output naming
     )
 
     ch_versions = ch_versions.mix(MULTIQC.out.versions)
 
     log.info "✔ MultiQC completed. Report available at: ${params.multiqc_output_dir}"
 
+    // -----------------------------------------------------------------------
+    // STEP 5: Merge versions
+    // -----------------------------------------------------------------------
+    log.info "Step 5: Merging versions information from all steps for traceability."
+
+    // Merge all per-module versions.yml files into one dated versions file
+    MERGE_VERSIONS(
+        run_id: params.run_id, // Pass run_id for logging and output naming
+        ch_versions: ch_versions.collect(),
+        log_dir: params.log_dir,
+        today_date: params.today_date
+    )
+
+    log.info "✔ Merged versions file available at: ${params.log_dir}/${params.today_date}_versions.yaml"
 
     log.info "✔ Pipeline completed successfully !"
 
 
     workflow.onComplete {
-        log.info "Pipeline finished with status: ${workflow.success ? 'SUCCESS' : 'FAILED'}"
-        log.info "Duration: ${workflow.duration}"
-        log.info "Work dir: ${workflow.workDir}"
+    def src = file("${launchDir}/.nextflow.log")
+    def dst = file("${params.log_dir}/${params.today_date}_nextflow.log")
+
+    if (src.exists()) {
+        dst.parentFile.mkdirs()
+        src.copyTo(dst, overwrite: true)
+        log.info "Nextflow log copied to: ${dst}"
+    } else {
+        log.warn "Nextflow log not found: ${src}"
     }
+
+    log.info "Pipeline finished with status: ${workflow.success ? 'SUCCESS' : 'FAILED'}"
+    log.info "Duration: ${workflow.duration}"
+    log.info "Work dir: ${workflow.workDir}"
+}
 
     workflow.onError {
         log.error "Pipeline failed: ${workflow.errorMessage}"

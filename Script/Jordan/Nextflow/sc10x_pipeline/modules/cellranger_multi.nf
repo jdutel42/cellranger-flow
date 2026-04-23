@@ -18,12 +18,9 @@
         val alignment_output_dir                            → alignment output directory
         val alignment_log_dir                               → alignment log directory
     Outputs :
-        tuple val(batch_id), path("multi_output/${batch_id}/outs/filtered_feature_bc_matrix/") → ch_matrices
         tuple val(batch_id), path("multi_output/${batch_id}/outs/metrics_summary.csv") → ch_metrics
         tuple val(batch_id), path("multi_output/${batch_id}/outs/web_summary.html") → ch_web_summaries
-        tuple val(batch_id), path("multi_output/${batch_id}/outs/molecule_info.h5") → ch_molecule_info
         path "versions.yml" → ch_versions
-        path "logs/multi_${batch_id}.log" → ch_logs
 ========================================================================================
 */
 
@@ -47,7 +44,7 @@ process CELLRANGER_MULTI {
     publishDir (
         path    : alignment_log_dir, // Use the alignment log directory for Cellranger Multi logs
         mode    : 'copy',
-        pattern : "logs/multi_${batch_id}.log"
+        pattern : "logs/${today_date}_multi_${run_id}_${batch_id}.log"
     )
 
     input:
@@ -57,12 +54,12 @@ process CELLRANGER_MULTI {
         path ref_vdj
         val alignment_output_dir // Output directory for Cellranger Multi results (val because it's STRING path)
         val alignment_log_dir // Log directory for Cellranger Multi logs (val because it's STRING)
+        val today_date // Today's date for logging and output naming
 
     output:
         tuple val(batch_id), path("multi_output/${batch_id}/outs/metrics_summary.csv"),         emit: metrics
         tuple val(batch_id), path("multi_output/${batch_id}/outs/web_summary.html"),            emit: web_summaries
         path "versions.yml",                                                                    emit: versions
-        path "logs/multi_${batch_id}.log",                                                      emit: logs
 
     script:
         """
@@ -97,9 +94,9 @@ process CELLRANGER_MULTI {
 
         # Logging
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] Start cellranger multi for batch ${batch_id}" \
-            | tee logs/multi_${batch_id}.log
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] run_id=${run_id}" | tee -a logs/multi_${batch_id}.log
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] cpus=${task.cpus} mem_gb=${task.memory.toGiga()}" | tee -a logs/multi_${batch_id}.log
+            | tee logs/${today_date}_multi_${run_id}_${batch_id}.log
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] run_id=${run_id}" | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
+        echo "[$(date '+%Y-%m-%d %H:%M:%S')] cpus=${task.cpus} mem_gb=${task.memory.toGiga()}" | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
 
         # ==============================================================================
         # Create Cell Ranger multi config CSV for this batch
@@ -127,12 +124,12 @@ EOF
             --csv="config_sample_${batch_id}.csv" \
             --localcores=${task.cpus} \
             --localmem=${task.memory.toGiga()} \
-            2>&1 | tee -a logs/multi_${batch_id}.log
+            2>&1 | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
 
         EXIT_CODE=\${PIPESTATUS[0]}
 
         if [ \$EXIT_CODE -ne 0 ]; then
-            echo "[ERROR] cellranger multi failed (code \$EXIT_CODE) for ${batch_id}." | tee -a logs/multi_${batch_id}.log
+            echo "[ERROR] cellranger multi failed (code \$EXIT_CODE) for ${batch_id}." | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
             exit \$EXIT_CODE
         fi
 
@@ -147,13 +144,13 @@ EOF
 
         for output_file in "\${REQUIRED_OUTPUTS[@]}"; do
             if [ ! -f "\$output_file" ] && [ ! -d "\$output_file" ]; then
-                echo "[ERROR] Missing expected output: \$output_file" | tee -a logs/multi_${batch_id}.log
+                echo "[ERROR] Missing expected output: \$output_file" | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
                 exit 1
             fi
         done
 
         echo "[$(date '+%Y-%m-%d %H:%M:%S')] cellranger multi completed for ${batch_id}." \
-            | tee -a logs/multi_${batch_id}.log
+            | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
 
         # -----------------------------------------------------------------------
         # Record tool version

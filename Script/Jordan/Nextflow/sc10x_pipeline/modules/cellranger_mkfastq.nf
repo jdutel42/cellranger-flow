@@ -10,7 +10,6 @@
         tuple val(run_id), path(bcl_dir), path(sample_sheet)
     Outputs :
         path("fastq_output_${run_id}")          → ch_fastqs
-        path "logs/mkfastq_${run_id}.log"       → ch_logs
         path "versions.yml"                     → ch_versions
 ========================================================================================
 */
@@ -19,7 +18,7 @@ process CELLRANGER_MKFASTQ {
 
     // Tag and label for logging and resource allocation
     tag "${task.process.toLowerCase()}_${run_id}" // Log the run ID for traceability
-    label 'process_low' // Use a high resource label since this step can be computationally intensive
+    label 'process_high' // Use a high resource label since this step can be computationally intensive
 
     // Container specification for reproducibility
     //container 'nfcore/cellranger:7.2.0'
@@ -37,7 +36,7 @@ process CELLRANGER_MKFASTQ {
     publishDir (
         path    : qc_log_dir, // Use the QC log directory for logs
         mode    : 'copy', // Copy logs to the output directory
-        pattern : "logs/mkfastq_${run_id}.log" // Publish all log files generated in work/logs/ to qc_log_dir directory
+        pattern : "logs/${today_date}_mkfastq_${run_id}.log" // Publish all log files generated in work/logs/ to qc_log_dir directory
     )
 
     // Declare process inputs
@@ -45,11 +44,11 @@ process CELLRANGER_MKFASTQ {
         tuple val(run_id), path(bcl_dir), path(preprocessed_sample_sheet)
         val qc_output_dir // Output directory for FASTQ files (val because it's STRING path)
         val qc_log_dir // Log directory for QC logs
+        val today_date // Today's date for logging and output naming
 
     // Output the generated FASTQ files, versions information, and logs
     output:
         path("fastq_output_${run_id}"), emit: fastqs
-        path "logs/mkfastq_${run_id}.log", emit: logs
         path "versions.yml", emit: versions
 
     // Script section to run cellranger mkfastq
@@ -60,7 +59,7 @@ process CELLRANGER_MKFASTQ {
 
     # Redirect all log (stdout and stderr) to a log file for this process
     mkdir -p fastq_output_${run_id} logs
-    exec > >(tee -a logs/mkfastq_${run_id}.log) 2>&1
+    exec > >(tee -a logs/${today_date}_mkfastq_${run_id}.log) 2>&1
 
     ##########################################
     #                 Verif                  #
@@ -116,19 +115,19 @@ process CELLRANGER_MKFASTQ {
     # Verify successful execution
     # -----------------------------------------------------------------------
     if [ \$EXIT_CODE -ne 0 ]; then
-        echo "[ERROR] cellranger mkfastq failed with exit code \$EXIT_CODE." | tee -a logs/mkfastq_${run_id}.log
+        echo "[ERROR] cellranger mkfastq failed with exit code \$EXIT_CODE." | tee -a logs/${today_date}_mkfastq_${run_id}.log
         exit \$EXIT_CODE
     fi
 
     # Ensure at least one FASTQ file was generated
     FASTQ_COUNT=\$(find fastq_output_${run_id} -name "*.fastq.gz" | wc -l)
     if [ "\$FASTQ_COUNT" -eq 0 ]; then
-        echo "[ERROR] No FASTQ files generated in fastq_output_${run_id}/" | tee -a logs/mkfastq_${run_id}.log
+        echo "[ERROR] No FASTQ files generated in fastq_output_${run_id}/" | tee -a logs/${today_date}_mkfastq_${run_id}.log
         exit 1
     fi
 
     echo "[$(date '+%Y-%m-%d %H:%M:%S')] mkfastq completed - \$FASTQ_COUNT FASTQ files generated." \\
-        | tee -a logs/mkfastq_${run_id}.log
+        | tee -a logs/${today_date}_mkfastq_${run_id}.log
 
     # -----------------------------------------------------------------------
     # Record tool version

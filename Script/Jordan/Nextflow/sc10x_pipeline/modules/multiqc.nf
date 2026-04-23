@@ -19,7 +19,7 @@
 process MULTIQC {
 
     tag "${task.process.toLowerCase()}_${run_id}" // Log the run ID for traceability
-    label 'process_low' // Label for resource allocation
+    label 'process_high' // Label for resource allocation
 
     // Use container for reproducibility
     container 'quay.io/biocontainers/multiqc:1.21--pyhdfd78af_0'
@@ -36,7 +36,7 @@ process MULTIQC {
     publishDir (
         path    : multiqc_log_dir, // Use the specified log directory for MultiQC logs
         mode    : 'copy',
-        pattern : "multiqc_${run_id}.log"
+        pattern : "logs/${today_date}_multiqc_${run_id}.log"
     )
 
     input:
@@ -44,6 +44,7 @@ process MULTIQC {
         val run_id      // Run identifier for logging and output naming
         val multiqc_output_dir // Output directory for MultiQC results (val because it's STRING path)
         val multiqc_log_dir // Log directory for MultiQC logs (val because it's STRING path)
+        val today_date // Today's date for logging and output naming
 
     output:
         path "output_multiqc/multiqc_report_${run_id}.html" // Output HTML report named with run_id for traceability
@@ -52,7 +53,7 @@ process MULTIQC {
 
     script:
         """
-        exec > >(tee "multiqc_${run_id}.log") 2>&1
+        exec > >(tee "logs/${today_date}_multiqc_${run_id}.log") 2>&1
 
         # -----------------------------------------------------------------------
         # Input checks
