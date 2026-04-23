@@ -18,7 +18,7 @@
 process CELLRANGER_MKFASTQ {
 
     // Tag and label for logging and resource allocation
-    tag "mkfastq | run_id: ${run_id}" // Log the run ID for traceability
+    tag "${task.process.toLowerCase()}_${run_id}" // Log the run ID for traceability
     label 'process_low' // Use a high resource label since this step can be computationally intensive
 
     // Container specification for reproducibility

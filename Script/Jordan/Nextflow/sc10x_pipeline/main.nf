@@ -50,7 +50,7 @@ def printHeader() {
     ║  alignment_output_dir     : ${params.alignment_output_dir}                   ║
     ║  multiqc_output_dir       : ${params.multiqc_output_dir}                     ║
     ║  log_dir                  : ${params.log_dir}                                ║
-    ║  localcores/localmem      : ${params.localcores} / ${params.localmemory} GB  ║
+    ║  cpu/memory_limit         : ${params.cpu_limit} / ${params.memory_limit}GB   ║
     ║  pipeline_version         : ${params.pipeline_version}                       ║
     ║  min_nextflow_version     : ${params.min_nextflow_version}                   ║
     ╚══════════════════════════════════════════════════════════════════════════════╝
@@ -308,15 +308,30 @@ def validateParams() {
         }
      }
 
-    // Check localcores and localmemory (optional, but if provided, must be positive integers)
-    if (params.localcores) {
-        if (!params.localcores.toString().isInteger() || params.localcores <= 0) {
-            error "[ERROR]: The --localcores parameter must be a positive integer. Invalid value: ${params.localcores}"
+    // Check localcores and/or localmemory (optional, but if provided, must be positive integers)
+    if (!params.cpu_limit) {
+        log.warn "[WARNING]: The --cpu_limit parameter is not specified. Default CPU limit will be set to: ${params.cpu_limit}"
+    } else {
+        if (params.cpu_limit <= 0) {
+            error "[ERROR]: The --cpu_limit parameter must be a positive integer. Invalid value: ${params.cpu_limit}"
+        } else {
+            // If cpu_limit is specified, it should not exceed default cpu_limit (e.g., 16) to prevent overloading the system. This is a safeguard, but can be adjusted based on the specific environment and needs.
+            if (params.cpu_limit > 16) {
+                log.warn "[WARNING]: The specified --cpu_limit (${params.cpu_limit}) exceeds the recommended maximum of 16."
+            }
+
         }
     }
-    if (params.localmemory) {
-        if (!params.localmemory.toString().isInteger() || params.localmemory <= 0) {
-            error "[ERROR]: The --localmemory parameter must be a positive integer. Invalid value: ${params.localmemory}"
+    if (!params.memory_limit) {
+        log.warn "[WARNING]: The --memory_limit parameter is not specified. Default memory limit will be set to: ${params.memory_limit}"
+    } else {
+        if (params.memory_limit <= 0) {
+            error "[ERROR]: The --memory_limit parameter must be a positive integer. Invalid value: ${params.memory_limit}"
+        } else {
+            // If memory_limit is specified, it should not exceed default memory_limit (e.g., 64 GB) to prevent overloading the system. This is a safeguard, but can be adjusted based on the specific environment and needs.
+            if (params.memory_limit > 64) {
+                log.warn "[WARNING]: The specified --memory_limit (${params.memory_limit} GB) exceeds the recommended maximum of 64 GB."
+            }
         }
     }
 

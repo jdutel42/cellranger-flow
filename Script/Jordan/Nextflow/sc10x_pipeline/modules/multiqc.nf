@@ -18,7 +18,7 @@
 
 process MULTIQC {
 
-    tag "multiqc | global QC aggregation | run: ${run_id}" // Log the run ID for traceability
+    tag "${task.process.toLowerCase()}_${run_id}" // Log the run ID for traceability
     label 'process_low' // Label for resource allocation
 
     // Use container for reproducibility

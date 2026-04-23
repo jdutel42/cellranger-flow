@@ -10,12 +10,12 @@
     "preprocessing_output_dir": "/Data/Sample_sheet/Modified/",
     "qc_output_dir": "Result/QC/",
     "alignment_output_dir": "Result/Alignment/",
-    "log_multiqc_output_dirdir": "Result/MultiQC/",
+    "multiqc_output_dir": "Result/MultiQC/",
     "log_dir": "Log/",
     "preprocessing_log_dir": "Log/Preprocessing/",
     "qc_log_dir": "Log/QC/",
     "alignment_log_dir": "Log/Alignment/",
     "multiqc_log_dir": "Log/MultiQC/",
-    "localcores": 4,
-    "localmem": "16 GB"
+    "cpu_limit": 16,
+    "memory_limit": 64
 }

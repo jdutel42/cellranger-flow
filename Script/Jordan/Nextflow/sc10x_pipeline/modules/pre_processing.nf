@@ -19,7 +19,9 @@
 process PREPROCESSING {
 
     // Tag and label for logging and resource allocation
-    tag "preprocess | run_id: ${run_id}" // Log the name of the input sample sheet
+    // A task is 1 execution of 1 process for 1 set of inputs. for exemple, cellranger_multi with run_id = HCHNTDMX2 and batch_id = 74 is a task
+    // A tag is useful to differentiate tasks of the same process (e.g. cellranger_multi) with different inputs (e.g. batch_id) and thus to have different log files and job names in SLURM. The tag is defined in the modules.
+    tag "${task.process.toLowerCase()}_${run_id}" // Log the name of the input sample sheet
     label 'process_low' // Use a low resource label since this is a lightweight step
 
     // Publish the standardized sample sheet to the output directory for reference
