@@ -53,21 +53,56 @@ process MULTIQC {
 
     script:
         """
+        # Exit on error (set -e), undefined variable (set -u), or error in pipeline (set -o pipefail)
+        set -euo pipefail
+
+        # Create logs directory if it doesn't exist
+        mkdir -p logs output_multiqc
+
+        # Redirect all log (stdout and stderr) to a log file for this process
         exec > >(tee "logs/${today_date}_multiqc_${run_id}.log") 2>&1
 
-        # -----------------------------------------------------------------------
-        # Input checks
-        # -----------------------------------------------------------------------
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Starting MultiQC"
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Received QC files:"
-        ls -la .
+        # Load shared logging helpers
+        source "${params.logging_script}"
 
-        # Create dir multiqc_output if it doesn't exist
-        mkdir -p output_multiqc
+        log_info "
+        ╔═══════════════════════════════════════════════════════════════════════════════╗
+        ║                         MultiQC Process Script                                ║
+        ╠═══════════════════════════════════════════════════════════════════════════════╣
+        ║ Logging input parameters:                                                     ║
+        ║ - run_id: ${run_id}                                                           ║
+        ║ - qc_files: ${qc_files}                                                       ║
+        ║ - cpus: ${task.cpus}                                                          ║
+        ║ - mem_gb: ${task.memory.toGiga()}                                             ║
+        ║ - multiqc_output_dir: ${multiqc_output_dir}                                   ║
+        ║ - multiqc_log_dir: ${multiqc_log_dir}                                         ║
+        ║ - today_date: ${today_date}                                                   ║
+        ╚═══════════════════════════════════════════════════════════════════════════════╝
+        "
+
+        log_start "Starting MultiQC for run_id ${run_id}..."
+
+        # -------------------------------------------------------------------------
+        # Initialisation & Verification
+        # -------------------------------------------------------------------------
+        
+        log_verify "Verifying input files and directories..."
+
+        log_info "Received QC files:"
+        ls -la ${qc_files}
+
+        if [ -z "$(ls -A ${qc_files})" ]; then
+            log_error "No QC files found in the input directory: ${qc_files}"
+        fi
+
+        log_ok "Input files and directories verified successfully."
 
         # -----------------------------------------------------------------------
         # Run MultiQC
         # -----------------------------------------------------------------------
+        
+        log_start "Running MultiQC for run_id ${run_id}..."
+        
         multiqc \\
             . \\
             --title "MultiQC Report - ${run_id}" \\
@@ -85,32 +120,49 @@ process MULTIQC {
         # -fullnames: Use full file names in the report for traceability
         # --outdir ./output_multiqc: Output results to the multiqc_output directory
 
-
-
-
         EXIT_CODE=\$?
+
+        log_ok "MultiQC finished for run_id ${run_id} with exit code \$EXIT_CODE."
 
         # -----------------------------------------------------------------------
         # Verify successful execution
         # -----------------------------------------------------------------------
+        
+        log_verify "Verifying MultiQC output..."
+        
         if [ \$EXIT_CODE -ne 0 ]; then
-            echo "[ERROR] MultiQC failed with exit code \$EXIT_CODE." >&2
-            exit \$EXIT_CODE
+            log_error "MultiQC failed with exit code \$EXIT_CODE."
         fi
 
         if [ ! -f "./output_multiqc/multiqc_report_${run_id}.html" ]; then
-            echo "[ERROR] MultiQC HTML report was not generated." >&2
-            exit 1
+            log_error "MultiQC HTML report was not generated."
         fi
 
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] MultiQC completed. Report: ./output_multiqc/multiqc_report_${run_id}.html"
+        log_ok "MultiQC output verified."
+
+        log_save "MultiQC report for run_id ${run_id} saved to ${multiqc_output_dir}/multiqc_report_${run_id}.html."
 
         # -----------------------------------------------------------------------
         # Record tool version
         # -----------------------------------------------------------------------
+        
+        log_start "Recording tool versions for reproducibility..."
+
         cat <<-END_VERSIONS > versions.yml
         "${task.process}":
             multiqc: \$(multiqc --version 2>&1 | grep -oP 'version \\K[0-9.]+')
         END_VERSIONS
+
+        log_ok "Tool versions recorded successfully in versions.yml"
+
+        # -----------------------------------------------------------------------
+        # End
+        # -----------------------------------------------------------------------
+
+        log_save "MultiQC output for run_id ${run_id} saved to ${multiqc_output_dir}."
+        log_log "Versions information will be saved to ${params.log_dir}/versions.yml"
+        log_log "Logs saved to ${multiqc_log_dir}/${today_date}_multiqc_${run_id}.log"
+
+        log_success "MultiQC process completed successfully for run_id = ${run_id} !"
         """
 }

@@ -63,14 +63,43 @@ process CELLRANGER_MULTI {
 
     script:
         """
-        # ==============================================================================
-        # Logging and error handling setup
-        # ==============================================================================
-        # Stop execution on any error, undefined variable, or failed pipe command
+        # Exit on error (set -e), undefined variable (set -u), or error in pipeline (set -o pipefail)
         set -euo pipefail
 
-        # Create necessary directories for outputs and logs
+        # Create logs directory if it doesn't exist
         mkdir -p logs multi_output
+
+        # Redirect all log (stdout and stderr) to a log file for this process
+        exec > >(tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log) 2>&1
+
+        # Load shared logging helpers
+        source "${params.logging_script}"
+
+        log_info "
+        ╔═══════════════════════════════════════════════════════════════════════════════╗
+        ║                         Cell Ranger multi Process Script                      ║
+        ╠═══════════════════════════════════════════════════════════════════════════════╣
+        ║ Logging input parameters:                                                     ║
+        ║ - run_id: ${run_id}                                                           ║
+        ║ - batch_id: ${batch_id}                                                       ║
+        ║ - fastq_folder: ${fastq_folder}                                               ║
+        ║ - ref_gex: ${ref_gex}                                                         ║
+        ║ - ref_vdj: ${ref_vdj}                                                         ║
+        ║ - cpus: ${task.cpus}                                                          ║
+        ║ - mem_gb: ${task.memory.toGiga()}                                             ║
+        ║ - alignment_output_dir: ${alignment_output_dir}                               ║
+        ║ - alignment_log_dir: ${alignment_log_dir}                                     ║
+        ║ - today_date: ${today_date}                                                   ║
+        ╚═══════════════════════════════════════════════════════════════════════════════╝
+        "
+
+        log_start "Starting Cell Ranger multi for run_id ${run_id} & batch_id ${batch_id}..."
+
+        # -------------------------------------------------------------------------
+        # Initialisation & Verification
+        # -------------------------------------------------------------------------
+        
+        log_verify "Verifying input files and directories..."
 
         # Define paths to FASTQ directories
         FASTQ_GEX_DIR="${fastq_folder}"
@@ -78,29 +107,25 @@ process CELLRANGER_MULTI {
 
         # Verification of input files and directories
         if [ ! -d "${fastq_folder}" ]; then
-            echo "ERROR: FASTQ base directory does not exist: ${fastq_folder}" >&2
-            exit 1
+            log_error "FASTQ base directory does not exist: ${fastq_folder}"
         fi
 
         if ! find "\$FASTQ_GEX_DIR" -maxdepth 1 -name "${batch_id}_GEX*.fastq.gz" | grep -q .; then
-            echo "ERROR: Missing GEX FASTQ files for ${batch_id} in \$FASTQ_GEX_DIR" >&2
-            exit 1
+            log_error "Missing GEX FASTQ files for ${batch_id} in \$FASTQ_GEX_DIR"
         fi
 
         if ! find "\$FASTQ_VDJ_DIR" -maxdepth 1 -name "${batch_id}_VDJ*.fastq.gz" | grep -q .; then
-            echo "ERROR: Missing VDJ FASTQ files for ${batch_id} in \$FASTQ_VDJ_DIR" >&2
-            exit 1
+            log_error "Missing VDJ FASTQ files for ${batch_id} in \$FASTQ_VDJ_DIR"
         fi
 
-        # Logging
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] Start cellranger multi for batch ${batch_id}" \
-            | tee logs/${today_date}_multi_${run_id}_${batch_id}.log
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] run_id=${run_id}" | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] cpus=${task.cpus} mem_gb=${task.memory.toGiga()}" | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
+        log_ok "Input files and directories verified successfully."
 
-        # ==============================================================================
+        # -------------------------------------------------------------------------
         # Create Cell Ranger multi config CSV for this batch
-        # ==============================================================================
+        # -------------------------------------------------------------------------
+        
+        log_start "Creating Cell Ranger multi config CSV for run_id ${run_id} & batch_id ${batch_id}..."
+        
         cat > "config_sample_${batch_id}.csv" <<EOF
 [gene-expression]
 ref,${ref_gex}
@@ -116,9 +141,16 @@ ${batch_id}_GEX,\$FASTQ_GEX_DIR,any,${batch_id}_GEX,Gene Expression,
 ${batch_id}_VDJ,\$FASTQ_VDJ_DIR,any,${batch_id}_VDJ,VDJ,
 EOF
 
-        # ==============================================================================
-        # Run Cell Ranger multi
-        # ==============================================================================
+        log_ok "Config CSV created: config_sample_${batch_id}.csv"
+        
+        log_save "Config CSV content saved in logs/${today_date}_multi_${run_id}_${batch_id}_config.csv. Add a publishDir if you want to save it to output directories."
+
+        # -------------------------------------------------------------------------
+        # Run Cellranger multi
+        # -------------------------------------------------------------------------
+        
+        log_start "Running Cell Ranger multi for run_id ${run_id} & batch_id ${batch_id}..."
+        
         cellranger multi \
             --id="${batch_id}" \
             --csv="config_sample_${batch_id}.csv" \
@@ -129,9 +161,16 @@ EOF
         EXIT_CODE=\${PIPESTATUS[0]}
 
         if [ \$EXIT_CODE -ne 0 ]; then
-            echo "[ERROR] cellranger multi failed (code \$EXIT_CODE) for ${batch_id}." | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
-            exit \$EXIT_CODE
+            log_error "cellranger multi failed (code \$EXIT_CODE) for ${batch_id}."
         fi
+
+        log_ok "Cell Ranger multi finished for run_id ${run_id} & batch_id ${batch_id}."
+
+        # -----------------------------------------------------------------------
+        # Verify successful execution
+        # -----------------------------------------------------------------------
+
+        log_verify "Verifying cellranger multi output for ${batch_id}..."
 
         mv "${batch_id}" "multi_output/${batch_id}"
 
@@ -144,20 +183,35 @@ EOF
 
         for output_file in "\${REQUIRED_OUTPUTS[@]}"; do
             if [ ! -f "\$output_file" ] && [ ! -d "\$output_file" ]; then
-                echo "[ERROR] Missing expected output: \$output_file" | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
-                exit 1
+                log_error "Missing expected output: \$output_file"
             fi
         done
 
-        echo "[$(date '+%Y-%m-%d %H:%M:%S')] cellranger multi completed for ${batch_id}." \
-            | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
+        log_ok "Cellranger multi completed successfully for ${batch_id}."
+
+        log_save "Cellranger multi outputs (metrics_summary.csv, web_summary.html, filtered_feature_bc_matrix...) saved in ${alignment_output_dir}."
 
         # -----------------------------------------------------------------------
         # Record tool version
         # -----------------------------------------------------------------------
+        
+        log_start "Recording tool versions for reproducibility..."
+        
         cat <<-END_VERSIONS > versions.yml
         "${task.process}":
             cellranger: \$(cellranger --version 2>&1 | grep -oP 'cellranger-\\K[0-9.]+')
         END_VERSIONS
+
+        log_ok "Tool versions recorded successfully in versions.yml"
+
+        # -----------------------------------------------------------------------
+        # End
+        # -----------------------------------------------------------------------
+
+        log_save "Cellranger multi output fo run_id ${run_id} & batch_id ${batch_id} saved to ${alignment_output_dir}/multi_output/${batch_id}/."
+        log_log "Versions information will be saved to ${params.log_dir}/versions.yml"
+        log_log "Logs saved to ${alignment_log_dir}/${today_date}_multi_${run_id}_${batch_id}.log"
+
+        log_success "Cell Ranger multi process completed successfully for run_id = ${run_id} & batch_id = ${batch_id} !"
         """
 }

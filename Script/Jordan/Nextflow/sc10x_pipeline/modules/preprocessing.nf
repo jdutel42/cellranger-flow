@@ -36,7 +36,7 @@ process PREPROCESSING {
     publishDir (
         path    : "${preprocessing_log_dir}",
         mode    : 'copy',
-        pattern : "logs/${today_date}_Preprocessing.log"
+        pattern : "logs/${today_date}_preprocessing_${run_id}.log"
     )
 
     // Declare process inputs
@@ -55,34 +55,47 @@ process PREPROCESSING {
     // Script section to perform the preprocessing
     script:
     """
+    # Exit on error (set -e), undefined variable (set -u), or error in pipeline (set -o pipefail)
+    set -euo pipefail
 
-    set -euo pipefail # Exit on error (set -e), undefined variable (set -u), or error in pipeline (set -o pipefail)
+    # Create logs directory if it doesn't exist
+    mkdir -p logs
 
     # Redirect all log (stdout and stderr) to a log file for this process
-    mkdir -p logs
-    exec > >(tee logs/${today_date}_Preprocessing.log) 2>&1
+    exec > >(tee logs/${today_date}_preprocessing_${run_id}.log) 2>&1
+
+    # Load shared logging helpers
+    source "${params.logging_script}"
+
+    log_info "
+    ╔═══════════════════════════════════════════════════════════════════════════════╗
+    ║                         Cell Ranger mkfastq Process Script                    ║
+    ╠═══════════════════════════════════════════════════════════════════════════════╣
+    ║ Logging input parameters:                                                     ║
+    ║ - run_id: ${run_id}                                                           ║
+    ║ - raw_sample_sheet: ${raw_sample_sheet_file_path}                             ║
+    ║ - cpus: ${task.cpus}                                                          ║
+    ║ - mem_gb: ${task.memory.toGiga()}                                             ║
+    ║ - preprocessing_output_dir: ${preprocessing_output_dir}                       ║
+    ║ - preprocessing_log_dir: ${preprocessing_log_dir}                             ║
+    ║ - today_date: ${today_date}                                                   ║
+    ╚═══════════════════════════════════════════════════════════════════════════════╝
+    "
+
+    log_start "Starting sample sheet preprocessing: ${raw_sample_sheet_file_path}..."
 
     # ============================================================================
-    # Functions
+    # Initialisation
     # ============================================================================
-
-    log_info() {
-      echo "[INFO] \$(date '+%Y-%m-%d %H:%M:%S') - \$1"
-    }
-
-    log_error() {
-      echo "[ERROR] \$(date '+%Y-%m-%d %H:%M:%S') - \$1" >&2
-    }
-
-    # ============================================================================
-    # Main Script
-    # ============================================================================
-
-    log_info "Starting sample sheet preprocessing: ${raw_sample_sheet_file_path}"
 
     # Create temporary file for processing
     TEMP_SHEET=\$(mktemp)
     trap "rm -f \$TEMP_SHEET \${TEMP_SHEET}.tmp" EXIT
+
+    # ============================================================================
+    # Run awk
+    # ============================================================================
+    log_start "Removing header, reads, settings sections and [Data] title..."
 
     # Remove [Header], [Reads], and [Settings] sections
     # Keep only [Data] section and remove the [Data] header
@@ -93,13 +106,17 @@ process PREPROCESSING {
         in_data && NF > 0 { print }
         ' "${raw_sample_sheet_file_path}" > "\$TEMP_SHEET"
 
-        # Process columns
-        # 1. Replace Species with Lane (*)
-        # 2. Remove Sample_Name
-        # 3. Rename Sample_ID → Sample
-        # 4. Rename index10X → Index
-        # 5. Remove quotes
-        
+    log_ok "Extracted [Data] section from raw sample sheet"
+
+    log_start "Processing columns..."
+
+    # Process columns
+    # 1. Replace Species with Lane (*)
+    # 2. Remove Sample_Name
+    # 3. Rename Sample_ID → Sample
+    # 4. Rename index10X → Index
+    # 5. Remove quotes
+
     awk -F',' -v OFS=',' '
         NR == 1 {
             for (i = 1; i <= NF; i++) {
@@ -142,14 +159,42 @@ process PREPROCESSING {
             print out
         }
     ' "\$TEMP_SHEET" > "\${TEMP_SHEET}.tmp"
-        
-    mv "\${TEMP_SHEET}.tmp" Index_mkfastq_${run_id}.csv
-    
-    cat <<EOF > versions.yml
-"${task.process}":
-  awk: "\$(awk -W version 2>&1 | head -n1 | sed 's/\\t/ /g')"
-EOF
 
-    log_info "[INFO] Preprocessing completed: Index_mkfastq_${run_id}.csv"
+    # ============================================================================
+    # Verification & End
+    # ============================================================================
+    log_verify "Verifying processed sample sheet..."
+
+    if [ ! -s "\${TEMP_SHEET}.tmp" ]; then
+        log_error "Processed sample sheet is empty. Check the input file and preprocessing steps."
+    fi
+
+    # Rename the processed sheet to the final output name
+    mv "\${TEMP_SHEET}.tmp" Index_mkfastq_${run_id}.csv
+
+    log_ok "Processed columns and cleaned up sample sheet."
+    
+    log_save "Output saved to Index_mkfastq_${run_id}.csv"
+
+    # -----------------------------------------------------------------------
+    # Record tool version
+    # -----------------------------------------------------------------------
+    log_start "Recording tool versions for reproducibility..."
+
+    cat <<EOF > versions.yml
+    "${task.process}":
+    awk: "\$(awk -W version 2>&1 | head -n1 | sed 's/\\t/ /g')"
+    EOF
+        log_ok "Tool versions recorded successfully in versions.yml"
+
+    # -----------------------------------------------------------------------
+    # End
+    # -----------------------------------------------------------------------
+    
+    log_save "Preprocessed sample sheet for run_id ${run_id} saved to ${preprocessing_output_dir}/Index_mkfastq_${run_id}.csv."
+    log_log "Versions information will be saved to ${params.log_dir}/versions.yml"
+    log_log "Logs saved to ${preprocessing_log_dir}/${today_date}_preprocessing_${run_id}.log"
+
+    log_success "Preprocessing of sample sheet completed successfully : ${preprocessing_output_dir}/Index_mkfastq_${run_id}.csv !"
     """
 }

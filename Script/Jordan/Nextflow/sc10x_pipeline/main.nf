@@ -17,11 +17,11 @@ nextflow.enable.dsl = 2
 // IMPORTS MODULS
 // ========================================================================================
 
-include { PREPROCESSING       } from './modules/pre_processing'
-include { CELLRANGER_MKFASTQ  } from './modules/cellranger_mkfastq'
-include { CELLRANGER_MULTI    } from './modules/cellranger_multi'
-include { MULTIQC             } from './modules/multiqc'
-include { MERGE_VERSIONS      } from './modules/merge_versions'
+include { PREPROCESSING       } from './modules/preprocessing.nf'
+include { CELLRANGER_MKFASTQ  } from './modules/cellranger_mkfastq.nf'
+include { CELLRANGER_MULTI    } from './modules/cellranger_multi.nf'
+include { MULTIQC             } from './modules/multiqc.nf'
+include { MERGE_VERSIONS      } from './modules/merge_versions.nf'
 
 // ========================================================================================
 // IMPORTS SUB-WORKFLOWS
@@ -65,203 +65,203 @@ def printHeader() {
 def validateParams() {
 
     // Log the start of parameter validation
-    log.info "🔍 Validating input parameters..."
+    log.info "[INFO]: 🔍 Validating input parameters..."
 
     // Check for minimum Nextflow version
     if (params.min_nextflow_version) {
         def current_version = nextflow.version
         if (current_version < params.min_nextflow_version) {
-            error "[ERROR]: Nextflow version ${params.min_nextflow_version} or higher is required. Current version: ${current_version}"
+            error "[ERROR]: ❌ Nextflow version ${params.min_nextflow_version} or higher is required. Current version: ${current_version}"
         }
     }
 
     // Check for pipeline version (optional, but can be used for traceability)
     if (!params.pipeline_version) {
-        log.warn "[WARNING]: --pipeline_version is not specified. It's recommended to provide a version for traceability."
+        log.warn "[WARNING]: ⚠️ --pipeline_version is not specified. It's recommended to provide a version for traceability."
     }
 
     // Check for run_id (required for logging and output naming)
     if (!params.run_id) {
-        error "[ERROR]: The --run_id parameter is required for logging and output naming. Please provide a unique identifier for this run like Flowcell ID, e.g., 'HCHNTDMX2'."
+        error "[ERROR]: ❌ The --run_id parameter is required for logging and output naming. Please provide a unique identifier for this run like Flowcell ID, e.g., 'HCHNTDMX2'."
     }
 
     // Check for raw sample sheet file path
     if (!params.raw_sample_sheet_file_path) {
-        error "[ERROR]: The --raw_sample_sheet_file_path parameter is required."
+        error "[ERROR]: ❌ The --raw_sample_sheet_file_path parameter is required."
     } else {
         // Validate that the raw sample sheet file exists, is a file (not a directory), and has a .csv extension
         def raw_ss_path = file(params.raw_sample_sheet_file_path)
         if (!file(params.raw_sample_sheet_file_path).exists()) {
-            error "[ERROR]: Raw sample sheet file does not exist: ${params.raw_sample_sheet_file_path}"
+            error "[ERROR]: ❌ Raw sample sheet file does not exist: ${params.raw_sample_sheet_file_path}"
         }
         if (!raw_ss_path.isFile()) {
-            error "[ERROR]: --raw_sample_sheet_file_path must be a file, not a directory: ${params.raw_sample_sheet_file_path}"
+            error "[ERROR]: ❌ --raw_sample_sheet_file_path must be a file, not a directory: ${params.raw_sample_sheet_file_path}"
         }
         if (!raw_ss_path.name.toLowerCase().endsWith('.csv')) {
-            error "[ERROR]: Raw sample sheet file must be a CSV file: ${params.raw_sample_sheet_file_path}"
+            error "[ERROR]: ❌ Raw sample sheet file must be a CSV file: ${params.raw_sample_sheet_file_path}"
         }
     }
 
     // Check for BCL directory
     if (!params.bcl_dir) {
-        log.warn "[WARNING]: The --bcl_dir parameter is not specified. Default bcl_dir path will be set to: ${params.bcl_dir}"
+        log.warn "[WARNING]: ⚠️ The --bcl_dir parameter is not specified. Default bcl_dir path will be set to: ${params.bcl_dir}"
     } else {
         // Validate that the BCL directory exists and is a directory
         def bcl_path = file(params.bcl_dir)
         if (!bcl_path.exists()) {
-            error "[ERROR]: BCL directory does not exist: ${params.bcl_dir}"
+            error "[ERROR]: ❌ BCL directory does not exist: ${params.bcl_dir}"
         }
         if (!bcl_path.isDirectory()) {
-            error "[ERROR]: --bcl_dir must be a directory, not a file: ${params.bcl_dir}"
+            error "[ERROR]: ❌ --bcl_dir must be a directory, not a file: ${params.bcl_dir}"
         }
     }
 
     // Check for protocol prefix (required for batch naming)
     if (!params.protocol_prefix) {
-        error "[ERROR]: The --protocol_prefix parameter is required for batch naming. Please provide a prefix that will be used to construct batch names, e.g., 'MIDAS2' or 'TecNante'."
+        error "[ERROR]: ❌ The --protocol_prefix parameter is required for batch naming. Please provide a prefix that will be used to construct batch names, e.g., 'MIDAS2' or 'TecNante'."
     } else {
         // Validate that protocol_prefix is a non-empty string without spaces (to ensure valid batch names)
         if (params.protocol_prefix.trim().isEmpty()) {
-            error "[ERROR]: The --protocol_prefix parameter cannot be empty. Please provide a valid prefix for batch naming, e.g., 'MIDAS2' or 'TecNante'."
+            error "[ERROR]: ❌ The --protocol_prefix parameter cannot be empty. Please provide a valid prefix for batch naming, e.g., 'MIDAS2' or 'TecNante'."
         }
         if (params.protocol_prefix.contains(' ')) {
-            error "[ERROR]: The --protocol_prefix parameter cannot contain spaces. Please provide a valid prefix for batch naming, e.g., 'MIDAS2' or 'TecNante'."
+            error "[ERROR]: ❌ The --protocol_prefix parameter cannot contain spaces. Please provide a valid prefix for batch naming, e.g., 'MIDAS2' or 'TecNante'."
         }
     }
 
     // Check for batch IDs (required for identifying batches in the sample sheet and naming outputs)
     if (!params.batch_ids) {
-        error "[ERROR]: The --batch_ids parameter is required for identifying batches in the sample sheet and naming outputs. Please provide a comma-separated list of batch IDs, e.g., '1,2,3'."
+        error "[ERROR]: ❌ The --batch_ids parameter is required for identifying batches in the sample sheet and naming outputs. Please provide a comma-separated list of batch IDs, e.g., '1,2,3'."
     } else {
         // Validate that batch_ids is a comma-separated list of integers
         def batch_ids_list = params.batch_ids.toString().split(',')
         if (batch_ids_list.size() == 0) {
-            error "[ERROR]: The --batch_ids parameter must contain at least one batch ID. Please provide a comma-separated list of batch IDs, e.g., '1,2,3'."
+            error "[ERROR]: ❌ The --batch_ids parameter must contain at least one batch ID. Please provide a comma-separated list of batch IDs, e.g., '1,2,3'."
         }
     }
 
     // Check genome (GEX) reference
     if (!params.path_ref_gex) {
-        log.warn "[WARNING]: The --path_ref_gex parameter is not specified. Default GEX reference path will be set to: ${params.path_ref_gex}"
+        log.warn "[WARNING]: ⚠️ The --path_ref_gex parameter is not specified. Default GEX reference path will be set to: ${params.path_ref_gex}"
     } else {
         // Validate that the GEX reference path exists and is a directory
         def gex_ref_path = file(params.path_ref_gex)
         if (!gex_ref_path.exists()) {
-            error "[ERROR]: GEX reference path does not exist: ${params.path_ref_gex}"
+            error "[ERROR]: ❌ GEX reference path does not exist: ${params.path_ref_gex}"
         }
         if (!gex_ref_path.isDirectory()) {
-            error "[ERROR]: --path_ref_gex must be a directory, not a file: ${params.path_ref_gex}"
+            error "[ERROR]: ❌ --path_ref_gex must be a directory, not a file: ${params.path_ref_gex}"
         }
     }
 
     // Check VDJ reference
     if (!params.path_ref_vdj) {
-        error "[ERROR]: The --path_ref_vdj parameter is required for the VDJ reference used in Cellranger Multi. Please provide the path to the VDJ reference, e.g., '/path/to/refdata-vdj-GRCh38-alts-ensembl-2020-A'."
+        error "[ERROR]: ❌ The --path_ref_vdj parameter is required for the VDJ reference used in Cellranger Multi. Please provide the path to the VDJ reference, e.g., '/path/to/refdata-vdj-GRCh38-alts-ensembl-2020-A'."
     } else {
         // Validate that the VDJ reference path exists and is a directory
         def vdj_ref_path = file(params.path_ref_vdj)
         if (!vdj_ref_path.exists()) {
-            error "[ERROR]: VDJ reference path does not exist: ${params.path_ref_vdj}"
+            error "[ERROR]: ❌ VDJ reference path does not exist: ${params.path_ref_vdj}"
         }
         if (!vdj_ref_path.isDirectory()) {
-            error "[ERROR]: --path_ref_vdj must be a directory, not a file: ${params.path_ref_vdj}"
+            error "[ERROR]: ❌ --path_ref_vdj must be a directory, not a file: ${params.path_ref_vdj}"
         }
     }
 
     // Check output directory (optional, but if provided, must be a directory)
     if (!params.output_dir) {
-        log.warn "[WARNING]: The --output_dir parameter is not specified. Default output directory will be set to: ${params.output_dir}"
+        log.warn "[WARNING]: ⚠️ The --output_dir parameter is not specified. Default output directory will be set to: ${params.output_dir}"
     } else {
         def output_path = file(params.output_dir)
         if (!output_path.exists()) {
-            log.info "[INFO]: Output directory does not exist. It will be created: ${params.output_dir}"
+            log.warn "[WARNING]: ⚠️ Output directory does not exist. It will be created: ${params.output_dir}"
         } else {
             if (!output_path.isDirectory()) {
-                error "[ERROR]: --output_dir must be a directory, not a file: ${params.output_dir}"
+                error "[ERROR]: ❌ --output_dir must be a directory, not a file: ${params.output_dir}"
             }
         }
     }
 
     // Check preprocessing output directory (optional, but if provided, must be a directory)
     if (!params.preprocessing_output_dir) {
-        log.warn "[WARNING]: The --preprocessing_output_dir parameter is not specified. Default preprocessing output directory will be set to: ${params.preprocessing_output_dir}"
+        log.warn "[WARNING]: ⚠️ The --preprocessing_output_dir parameter is not specified. Default preprocessing output directory will be set to: ${params.preprocessing_output_dir}"
     } else {
         def preproc_output_path = file(params.preprocessing_output_dir)
         if (!preproc_output_path.exists()) {
-            log.info "[INFO]: Preprocessing output directory does not exist. It will be created: ${params.preprocessing_output_dir}"
+            log.warn "[WARNING]: ⚠️ Preprocessing output directory does not exist. It will be created: ${params.preprocessing_output_dir}"
         } else {
             if (!preproc_output_path.isDirectory()) {
-                error "[ERROR]: --preprocessing_output_dir must be a directory, not a file: ${params.preprocessing_output_dir}"
+                error "[ERROR]: ❌ --preprocessing_output_dir must be a directory, not a file: ${params.preprocessing_output_dir}"
             }
         }
     }
 
     // Check qc output directory (optional, but if provided, must be a directory)
     if (!params.qc_output_dir) {
-        log.warn "[WARNING]: The --qc_output_dir parameter is not specified. Default QC output directory will be set to: ${params.qc_output_dir}"
+        log.warn "[WARNING]: ⚠️ The --qc_output_dir parameter is not specified. Default QC output directory will be set to: ${params.qc_output_dir}"
     } else {
         def qc_output_path = file(params.qc_output_dir)
         if (!qc_output_path.exists()) {
-            log.info "[INFO]: QC output directory does not exist. It will be created: ${params.qc_output_dir}"
+            log.warn "[WARNING]: ⚠️ QC output directory does not exist. It will be created: ${params.qc_output_dir}"
         } else {
             if (!qc_output_path.isDirectory()) {
-                error "[ERROR]: --qc_output_dir must be a directory, not a file: ${params.qc_output_dir}"
+                error "[ERROR]: ❌ --qc_output_dir must be a directory, not a file: ${params.qc_output_dir}"
             }
         }
     }
 
     // Check alignment output directory (optional, but if provided, must be a directory)
     if (!params.alignment_output_dir) {
-        log.warn "[WARNING]: The --alignment_output_dir parameter is not specified. Default alignment output directory will be set to: ${params.alignment_output_dir}"
+        log.warn "[WARNING]: ⚠️ The --alignment_output_dir parameter is not specified. Default alignment output directory will be set to: ${params.alignment_output_dir}"
     } else {
         def align_output_path = file(params.alignment_output_dir)
         if (!align_output_path.exists()) {
-            log.info "[INFO]: Alignment output directory does not exist. It will be created: ${params.alignment_output_dir}"
+            log.warn "[WARNING]: ⚠️ Alignment output directory does not exist. It will be created: ${params.alignment_output_dir}"
         } else {
             if (!align_output_path.isDirectory()) {
-                error "[ERROR]: --alignment_output_dir must be a directory, not a file: ${params.alignment_output_dir}"
+                error "[ERROR]: ❌ --alignment_output_dir must be a directory, not a file: ${params.alignment_output_dir}"
             }
         }
     }
 
     // Check MultiQC output directory (optional, but if provided, must be a directory)
     if (!params.multiqc_output_dir) {
-        log.warn "[WARNING]: The --multiqc_output_dir parameter is not specified. Default MultiQC output directory will be set to: ${params.multiqc_output_dir}"
+        log.warn "[WARNING]: ⚠️ The --multiqc_output_dir parameter is not specified. Default MultiQC output directory will be set to: ${params.multiqc_output_dir}"
     } else {
         def multiqc_output_path = file(params.multiqc_output_dir)
         if (!multiqc_output_path.exists()) {
-            log.info "[INFO]: MultiQC output directory does not exist. It will be created: ${params.multiqc_output_dir}"
+            log.warn "[WARNING]: ⚠️ MultiQC output directory does not exist. It will be created: ${params.multiqc_output_dir}"
         } else {
             if (!multiqc_output_path.isDirectory()) {
-                error "[ERROR]: --multiqc_output_dir must be a directory, not a file: ${params.multiqc_output_dir}"
+                error "[ERROR]: ❌ --multiqc_output_dir must be a directory, not a file: ${params.multiqc_output_dir}"
             }
         }
     }
 
     // Check log directory (optional, but if provided, must be a directory)
     if (!params.log_dir) {
-        log.warn "[WARNING]: The --log_dir parameter is not specified. Default log directory will be set to: ${params.log_dir}"
+        log.warn "[WARNING]: ⚠️ The --log_dir parameter is not specified. Default log directory will be set to: ${params.log_dir}"
     } else {
         def log_path = file(params.log_dir)
         if (!log_path.exists()) {
-            log.info "[INFO]: Log directory does not exist. It will be created: ${params.log_dir}"
+            log.warn "[WARNING]: ⚠️ Log directory does not exist. It will be created: ${params.log_dir}"
         } else {
             if (!log_path.isDirectory()) {
-                error "[ERROR]: --log_dir must be a directory, not a file: ${params.log_dir}"
+                error "[ERROR]: ❌ --log_dir must be a directory, not a file: ${params.log_dir}"
             }
         }
     }
 
     // Check preprocessing log directory (optional, but if provided, must be a directory)
     if (!params.preprocessing_log_dir) {
-        log.warn "[WARNING]: The --preprocessing_log_dir parameter is not specified. Default preprocessing log directory will be set to: ${params.preprocessing_log_dir}"
+        log.warn "[WARNING]: ⚠️ The --preprocessing_log_dir parameter is not specified. Default preprocessing log directory will be set to: ${params.preprocessing_log_dir}"
     } else {
         def preproc_log_path = file(params.preprocessing_log_dir)
         if (!preproc_log_path.exists()) {
-            log.info "[INFO]: Preprocessing log directory does not exist. It will be created: ${params.preprocessing_log_dir}"
+            log.warn "[WARNING]: ⚠️ Preprocessing log directory does not exist. It will be created: ${params.preprocessing_log_dir}"
         } else {
             if (!preproc_log_path.isDirectory()) {
-                error "[ERROR]: --preprocessing_log_dir must be a directory, not a file: ${params.preprocessing_log_dir}"
+                error "[ERROR]: ❌ --preprocessing_log_dir must be a directory, not a file: ${params.preprocessing_log_dir}"
             }
         }
     }
@@ -269,75 +269,75 @@ def validateParams() {
 
     // Check QC log directory (optional, but if provided, must be a directory)
     if (!params.qc_log_dir) {        
-        log.warn "[WARNING]: The --qc_log_dir parameter is not specified. Default QC log directory will be set to: ${params.qc_log_dir}"
+        log.warn "[WARNING]: ⚠️ The --qc_log_dir parameter is not specified. Default QC log directory will be set to: ${params.qc_log_dir}"
     } else {
         def qc_log_path = file(params.qc_log_dir)
         if (!qc_log_path.exists()) {
-            log.info "[INFO]: QC log directory does not exist. It will be created: ${params.qc_log_dir}"
+            log.warn "[WARNING]: ⚠️ QC log directory does not exist. It will be created: ${params.qc_log_dir}"
         } else {
             if (!qc_log_path.isDirectory()) {
-                error "[ERROR]: --qc_log_dir must be a directory, not a file: ${params.qc_log_dir}"
+                error "[ERROR]: ❌ --qc_log_dir must be a directory, not a file: ${params.qc_log_dir}"
             }
         }
     }
 
     // Check alignment log directory (optional, but if provided, must be a directory)    
     if (!params.alignment_log_dir) {
-        log.warn "[WARNING]: The --alignment_log_dir parameter is not specified. Default alignment log directory will be set to: ${params.alignment_log_dir}"
+        log.warn "[WARNING]: ⚠️ The --alignment_log_dir parameter is not specified. Default alignment log directory will be set to: ${params.alignment_log_dir}"
     } else {
         def alignment_log_path = file(params.alignment_log_dir)
         if (!alignment_log_path.exists()) {
-            log.info "[INFO]: Alignment log directory does not exist. It will be created: ${params.alignment_log_dir}"
+            log.warn "[WARNING]: ⚠️ Alignment log directory does not exist. It will be created: ${params.alignment_log_dir}"
         } else {
             if (!alignment_log_path.isDirectory()) {
-                error "[ERROR]: --alignment_log_dir must be a directory, not a file: ${params.alignment_log_dir}"
+                error "[ERROR]: ❌ --alignment_log_dir must be a directory, not a file: ${params.alignment_log_dir}"
             }
         }
     }
 
     // Check MultiQC log directory (optional, but if provided, must be a directory)
     if (!params.multiqc_log_dir) {
-        log.warn "[WARNING]: The --multiqc_log_dir parameter is not specified. Default MultiQC log directory will be set to: ${params.multiqc_log_dir}"
+        log.warn "[WARNING]: ⚠️ The --multiqc_log_dir parameter is not specified. Default MultiQC log directory will be set to: ${params.multiqc_log_dir}"
     } else {
         def multiqc_log_path = file(params.multiqc_log_dir)
         if (!multiqc_log_path.exists()) {
-            log.info "[INFO]: MultiQC log directory does not exist. It will be created: ${params.multiqc_log_dir}"
+            log.warn "[WARNING]: ⚠️ MultiQC log directory does not exist. It will be created: ${params.multiqc_log_dir}"
         } else {
             if (!multiqc_log_path.isDirectory()) {
-                error "[ERROR]: --multiqc_log_dir must be a directory, not a file: ${params.multiqc_log_dir}"
+                error "[ERROR]: ❌ --multiqc_log_dir must be a directory, not a file: ${params.multiqc_log_dir}"
             }
         }
      }
 
     // Check localcores and/or localmemory (optional, but if provided, must be positive integers)
     if (!params.cpu_limit) {
-        log.warn "[WARNING]: The --cpu_limit parameter is not specified. Default CPU limit will be set to: ${params.cpu_limit}"
+        log.warn "[WARNING]: ⚠️ The --cpu_limit parameter is not specified. Default CPU limit will be set to: ${params.cpu_limit}"
     } else {
         if (params.cpu_limit <= 0) {
-            error "[ERROR]: The --cpu_limit parameter must be a positive integer. Invalid value: ${params.cpu_limit}"
+            error "[ERROR]: ❌ The --cpu_limit parameter must be a positive integer. Invalid value: ${params.cpu_limit}"
         } else {
             // If cpu_limit is specified, it should not exceed default cpu_limit (e.g., 16) to prevent overloading the system. This is a safeguard, but can be adjusted based on the specific environment and needs.
             if (params.cpu_limit > 16) {
-                log.warn "[WARNING]: The specified --cpu_limit (${params.cpu_limit}) exceeds the recommended maximum of 16."
+                log.warn "[WARNING]: ⚠️ The specified --cpu_limit (${params.cpu_limit}) exceeds the recommended maximum of 16."
             }
 
         }
     }
     if (!params.memory_limit) {
-        log.warn "[WARNING]: The --memory_limit parameter is not specified. Default memory limit will be set to: ${params.memory_limit}"
+        log.warn "[WARNING]: ⚠️ The --memory_limit parameter is not specified. Default memory limit will be set to: ${params.memory_limit}"
     } else {
         if (params.memory_limit <= 0) {
-            error "[ERROR]: The --memory_limit parameter must be a positive integer. Invalid value: ${params.memory_limit}"
+            error "[ERROR]: ❌ The --memory_limit parameter must be a positive integer. Invalid value: ${params.memory_limit}"
         } else {
             // If memory_limit is specified, it should not exceed default memory_limit (e.g., 64 GB) to prevent overloading the system. This is a safeguard, but can be adjusted based on the specific environment and needs.
             if (params.memory_limit > 64) {
-                log.warn "[WARNING]: The specified --memory_limit (${params.memory_limit} GB) exceeds the recommended maximum of 64 GB."
+                log.warn "[WARNING]: ⚠️ The specified --memory_limit (${params.memory_limit} GB) exceeds the recommended maximum of 64 GB."
             }
         }
     }
 
     // Log the successful completion of parameter validation
-    log.info "✔ Parameter validation passed."
+    log.info "[INFO]: ✅ Parameter validation passed."
 }
 
 // ========================================================================================
@@ -345,7 +345,9 @@ def validateParams() {
 // ========================================================================================
 
 workflow {
-
+    // -----------------------------------------------------------------------
+    // Initialization and logging
+    // -----------------------------------------------------------------------
     // Print header and validate parameters at the start of the workflow
     printHeader()
 
@@ -359,7 +361,9 @@ workflow {
     // -----------------------------------------------------------------------
     // STEP 1: Preprocess the sample sheet to standardize it for downstream tools
     // -----------------------------------------------------------------------
-    log.info "Step 1: Preprocessing/Standardizing sample sheet."
+    log.info "[INFO]: 🚀 Step 1: Preprocessing/Standardizing sample sheet..."
+
+    log.info "[INFO]: 📁 Logs published by PREPROCESSING module in ${params.preprocessing_log_dir}"
     
     // Run PREPROCESSING module 
     PREPROCESSING(
@@ -374,12 +378,14 @@ workflow {
     ch_preprocessed_sample_sheet = PREPROCESSING.out.preprocessed_sample_sheet // Capture channel for standardized sample sheet
     ch_versions = ch_versions.mix(PREPROCESSING.out.versions) // Capture channel for versions information (mix for cumulation across steps)
 
-    log.info "✔ Sample sheet preprocessing completed. Standardized sample sheet available at: ${params.preprocessing_output_dir}"
+    log.info "[INFO]: ✅ Sample sheet preprocessing completed. Standardized sample sheet available at: ${params.preprocessing_output_dir}"
 
     // -----------------------------------------------------------------------
     // STEP 2: Process BCL files to FASTQ according standardized sample sheet
     // -----------------------------------------------------------------------
-    log.info "Step 2: Processing BCL files to FASTQ."
+    log.info "[INFO]: 🚀 Step 2: Processing BCL files to FASTQ..."
+
+    log.info "[INFO]: 📁 Logs published by CELLRANGER_MKFASTQ module in ${params.qc_log_dir}"
     
     // Run CELLRANGER_MKFASTQ module 
     CELLRANGER_MKFASTQ(
@@ -395,12 +401,14 @@ workflow {
     ch_fastqs = CELLRANGER_MKFASTQ.out.fastqs // Capture channel for generated FASTQ files
     ch_versions = ch_versions.mix(CELLRANGER_MKFASTQ.out.versions) // Capture channel for versions information (mix for cumulation across steps)
     
-    log.info "✔ BCL to FASTQ processing completed. FASTQ files available at: ${params.qc_output_dir}"
+    log.info "[INFO]: ✅ BCL to FASTQ processing completed. FASTQ files available at: ${params.qc_output_dir}"
 
     // -----------------------------------------------------------------------
     // STEP 3: Perform Alignment with Cellranger Multi
     // -----------------------------------------------------------------------
-    log.info "Step 3: Performing alignment with Cellranger Multi."
+    log.info "[INFO]: 🚀 Step 3: Performing alignment with Cellranger Multi..."
+
+    log.info "[INFO]: 📁 Logs published by CELLRANGER_MULTI module in ${params.alignment_log_dir}"
 
     // Convert the comma-separated batch IDs string into a list of batch id
     batch_ids_list = params.batch_ids.toString().split(',') // Split the comma-separated batch IDs into a list of batch_id
@@ -427,12 +435,14 @@ workflow {
     ch_web_summaries = CELLRANGER_MULTI.out.web_summaries // Capture channel for web summaries
     ch_versions = ch_versions.mix(CELLRANGER_MULTI.out.versions) // Capture channel for versions information (mix for cumulation across steps)
 
-    log.info "✔ Cellranger Multi processing completed. Results available at: ${params.alignment_output_dir}"
+    log.info "[INFO]: ✅ Cellranger Multi processing completed. Results available at: ${params.alignment_output_dir}"
 
     // -----------------------------------------------------------------------
     // STEP 4: MultiQC report generation
     // -----------------------------------------------------------------------
-    log.info "Step 4: Generating MultiQC report."
+    log.info "[INFO]: 🚀 Step 4: Generating MultiQC report..."
+
+    log.info "[INFO]: 📁 Logs published by MULTIQC module in ${params.multiqc_log_dir}"
     
     // Combine metrics summaries and web summaries into a single channel for MultiQC input
     ch_qc_files = 
@@ -453,12 +463,12 @@ workflow {
 
     ch_versions = ch_versions.mix(MULTIQC.out.versions)
 
-    log.info "✔ MultiQC completed. Report available at: ${params.multiqc_output_dir}"
+    log.info "[INFO]: ✅ MultiQC completed. Report available at: ${params.multiqc_output_dir}"
 
     // -----------------------------------------------------------------------
     // STEP 5: Merge versions
     // -----------------------------------------------------------------------
-    log.info "Step 5: Merging versions information from all steps for traceability."
+    log.info "[INFO]: 🚀 Step 5: Merging versions information from all steps for traceability..."
 
     // Merge all per-module versions.yml files into one dated versions file
     MERGE_VERSIONS(
@@ -468,10 +478,12 @@ workflow {
         today_date: params.today_date
     )
 
-    log.info "✔ Merged versions file available at: ${params.log_dir}/${params.today_date}_versions.yaml"
+    log.info "[INFO]: ✅ Merged versions file available at: ${params.log_dir}/${params.today_date}_versions.yaml"
 
-    log.info "✔ Pipeline completed successfully !"
-
+    // -----------------------------------------------------------------------
+    // Finishing workflow and logging
+    // -----------------------------------------------------------------------
+    log.info "[INFO]: ✅✅✅ Pipeline completed successfully !"
 
     workflow.onComplete {
     def src = file("${launchDir}/.nextflow.log")
@@ -480,18 +492,18 @@ workflow {
     if (src.exists()) {
         dst.parentFile.mkdirs()
         src.copyTo(dst, overwrite: true)
-        log.info "Nextflow log copied to: ${dst}"
+        log.info "[INFO]: 📁 Nextflow log copied to: ${dst}"
     } else {
-        log.warn "Nextflow log not found: ${src}"
+        log.warn "[WARNING]: ⚠️ Nextflow log not found: ${src}"
     }
 
-    log.info "Pipeline finished with status: ${workflow.success ? 'SUCCESS' : 'FAILED'}"
-    log.info "Duration: ${workflow.duration}"
-    log.info "Work dir: ${workflow.workDir}"
+    log.info "[INFO]: ✅ Pipeline finished with status: ${workflow.success ? 'SUCCESS' : 'FAILED'}"
+    log.info "[INFO]: ⏳ Duration: ${workflow.duration}"
+    log.info "[INFO]: 📁 Work dir: ${workflow.workDir}"
 }
 
     workflow.onError {
-        log.error "Pipeline failed: ${workflow.errorMessage}"
+        log.error "[ERROR]: ❌ Pipeline failed: ${workflow.errorMessage}"
     } 
 
 }

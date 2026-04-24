@@ -53,88 +53,126 @@ process CELLRANGER_MKFASTQ {
 
     // Script section to run cellranger mkfastq
     script:
-    """
-    # Stop the script if a command fails, if an undefined variable is used, or if a command in a pipeline fails
-    set -euo pipefail 
+        """
+        # Exit on error (set -e), undefined variable (set -u), or error in pipeline (set -o pipefail)
+        set -euo pipefail
 
-    # Redirect all log (stdout and stderr) to a log file for this process
-    mkdir -p fastq_output_${run_id} logs
-    exec > >(tee -a logs/${today_date}_mkfastq_${run_id}.log) 2>&1
+        # Create logs directory if it doesn't exist
+        mkdir -p fastq_output_${run_id} logs
 
-    ##########################################
-    #                 Verif                  #
-    ##########################################
+        # Redirect all log (stdout and stderr) to a log file for this process
+        exec > >(tee -a logs/${today_date}_mkfastq_${run_id}.log) 2>&1
 
-    # Verify that the BCL directory, preprocessed sample sheet directory exist before running cellranger mkfastq
-    # If not, log an error message and exit with a non-zero status code to indicate failure
-    if [ ! -d "${bcl_dir}" ]; then
-        echo "[ERROR] Missing BCL dir: ${bcl_dir}" >&2
-        exit 1
-    fi
+        # Load shared logging helpers
+        source "${params.logging_script}"
 
-    if [ ! -f "${preprocessed_sample_sheet}" ]; then
-        echo "[ERROR] Missing sample sheet: ${preprocessed_sample_sheet}" >&2
-        exit 1
-    fi
+        log_info "
+        ╔═══════════════════════════════════════════════════════════════════════════════╗
+        ║                         Cell Ranger mkfastq Process Script                    ║
+        ╠═══════════════════════════════════════════════════════════════════════════════╣
+        ║ Logging input parameters:                                                     ║
+        ║ - run_id: ${run_id}                                                           ║
+        ║ - bcl_dir: ${bcl_dir}                                                         ║
+        ║ - sample_sheet: ${preprocessed_sample_sheet}                                  ║
+        ║ - cpus: ${task.cpus}                                                          ║
+        ║ - mem_gb: ${task.memory.toGiga()}                                             ║
+        ║ - qc_output_dir: ${qc_output_dir}                                             ║
+        ║ - qc_log_dir: ${qc_log_dir}                                                   ║
+        ║ - today_date: ${today_date}                                                   ║
+        ╚═══════════════════════════════════════════════════════════════════════════════╝
+        "
 
-    # Verify that the output directory exist, if not create it
-    if [ ! -d "${qc_output_dir}" ]; then
-        echo "[WARNING] Output directory ${qc_output_dir} does not exist. Creating it."
-        mkdir -p "${qc_output_dir}"
-    fi
+        log_start "Starting cellranger mkfastq process for run_id = ${run_id}"
 
-    ##########################################
-    #                   Logging              #
-    ##########################################
+        # ============================================================================
+        # Initialisation & Verification
+        # ============================================================================
 
-    echo "[INFO] start: \$(date '+%F %T')"
-    echo "[INFO] run_id=${run_id}"
-    echo "[INFO] bcl_dir=${bcl_dir}"
-    echo "[INFO] sample_sheet=${preprocessed_sample_sheet}"
-    echo "[INFO] cpus=${task.cpus} mem_gb=${task.memory.toGiga()}"
+        log_verify "Verifying input files and directories..."
 
+        # Verify that the BCL directory, preprocessed sample sheet directory exist before running cellranger mkfastq
+        # If not, log an error message and exit with a non-zero status code to indicate failure
+        if [ ! -d "${bcl_dir}" ]; then
+            log_error "Missing BCL dir: ${bcl_dir}"
+        fi
 
-    ##########################################
-    #                   Run                  #
-    ##########################################
+        if [ ! -f "${preprocessed_sample_sheet}" ]; then
+            log_error "Missing sample sheet: ${preprocessed_sample_sheet}" >&2
+        fi
 
-    # See if run_ID is FlowCellID HCHNTDMX2 or CelineID 260323_A01789_0447_AHCHNTDMX2 (I think FlowCellID HCHNTDMX2 is better)
-    cellranger mkfastq \\
-        --id="${run_id}" \\ 
-        --run="${bcl_dir}" \\
-        --csv="${preprocessed_sample_sheet}" \\
-        --output-dir=fastq_output_${run_id} \\
-        --localcores=${task.cpus} \\
-        --localmem=${task.memory.toGiga()} 
+        # Verify that the output directory exist, if not create it
+        if [ ! -d "${qc_output_dir}" ]; then
+            log_warning "Output directory ${qc_output_dir} does not exist. Creating it."
+            mkdir -p "${qc_output_dir}"
+        fi
 
-    EXIT_CODE=$?
+        log_ok "Input verification completed successfully"
 
-    echo "[INFO] end: \$(date '+%F %T')"
+        # =============================================================================
+        # Run Cellranger mkfastq
+        # =============================================================================
 
-    # -----------------------------------------------------------------------
-    # Verify successful execution
-    # -----------------------------------------------------------------------
-    if [ \$EXIT_CODE -ne 0 ]; then
-        echo "[ERROR] cellranger mkfastq failed with exit code \$EXIT_CODE." | tee -a logs/${today_date}_mkfastq_${run_id}.log
-        exit \$EXIT_CODE
-    fi
+        log_start "Running cellranger mkfastq for run_id = ${run_id}..."
 
-    # Ensure at least one FASTQ file was generated
-    FASTQ_COUNT=\$(find fastq_output_${run_id} -name "*.fastq.gz" | wc -l)
-    if [ "\$FASTQ_COUNT" -eq 0 ]; then
-        echo "[ERROR] No FASTQ files generated in fastq_output_${run_id}/" | tee -a logs/${today_date}_mkfastq_${run_id}.log
-        exit 1
-    fi
+        # See if run_ID is FlowCellID HCHNTDMX2 or CelineID 260323_A01789_0447_AHCHNTDMX2 (I think FlowCellID HCHNTDMX2 is better)
+        cellranger mkfastq \\
+            --id="${run_id}" \\ 
+            --run="${bcl_dir}" \\
+            --csv="${preprocessed_sample_sheet}" \\
+            --output-dir=fastq_output_${run_id} \\
+            --localcores=${task.cpus} \\
+            --localmem=${task.memory.toGiga()} 
 
-    echo "[$(date '+%Y-%m-%d %H:%M:%S')] mkfastq completed - \$FASTQ_COUNT FASTQ files generated." \\
-        | tee -a logs/${today_date}_mkfastq_${run_id}.log
+        log_ok "Cellranger mkfastq finished for run_id = ${run_id}"
 
-    # -----------------------------------------------------------------------
-    # Record tool version
-    # -----------------------------------------------------------------------
-    cat <<-END_VERSIONS > versions.yml
-    "${task.process}":
-        cellranger: \$(cellranger --version 2>&1 | grep -oP 'cellranger-\\K[0-9.]+')
-    END_VERSIONS
-    """
+        # -----------------------------------------------------------------------
+        # Verify successful execution
+        # -----------------------------------------------------------------------
+        log_verify "Verifying cellranger mkfastq output..."
+        
+        if [ \$EXIT_CODE -ne 0 ]; then
+            log_error "Cellranger mkfastq failed with exit code \$EXIT_CODE for run_id = ${run_id}." >&2
+        fi
+
+        if [ ! -d "fastq_output_${run_id}" ]; then
+            log_error "Cellranger mkfastq did not generate the expected output directory: fastq_output_${run_id}/" >&2
+        fi
+
+        if ! find "fastq_output_${run_id}" -name "*.fastq.gz" | grep -q .; then
+            log_error "No FASTQ files were generated in fastq_output_${run_id}/" >&2
+        fi
+
+        # Ensure the expected output directory exists and contains FASTQ files
+        # Ensure at least one FASTQ file was generated
+        FASTQ_COUNT=\$(find fastq_output_${run_id} -name "*.fastq.gz" | wc -l)
+        if [ "\$FASTQ_COUNT" -eq 0 ]; then
+            log_error "No FASTQ files generated in fastq_output_${run_id}/" >&2
+        fi
+
+        log_ok "Verified cellranger mkfastq output successfully"
+
+        log_save "Cellranger mkfastq completed successfully for run_id = ${run_id} with \$FASTQ_COUNT FASTQ files generated in ${qc_output_dir}/fastq_output_${run_id}/"
+
+        # -----------------------------------------------------------------------
+        # Record tool version
+        # -----------------------------------------------------------------------
+        log_start "Recording tool versions for reproducibility..."
+
+        cat <<-END_VERSIONS > versions.yml
+        "${task.process}":
+            cellranger: \$(cellranger --version 2>&1 | grep -oP 'cellranger-\\K[0-9.]+')
+        END_VERSIONS
+
+        log_ok "Tool versions recorded successfully in versions.yml"
+
+        # -----------------------------------------------------------------------
+        # End
+        # -----------------------------------------------------------------------
+        
+        log_save "Cellranger multi output fo run_id ${run_id} saved to ${qc_output_dir}/fastq_output_${run_id}/."
+        log_log "Versions information will be saved to ${params.log_dir}/versions.yml"
+        log_log "Logs saved to ${qc_log_dir}/${today_date}_mkfastq_${run_id}.log"
+
+        log_success "Cell Ranger mkfastq process completed successfully for run_id = ${run_id} !"
+        """
 }
