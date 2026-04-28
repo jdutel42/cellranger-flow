@@ -122,6 +122,15 @@ multiqc --version
 ```bash
 cd /home/dutel/cellranger-flow
 
+# Load miniconda module
+module load devel/python/Miniconda3-py39_4.10.3
+
+# Source conda
+source "$(conda info --base)/etc/profile.d/conda.sh"
+
+# Activate environment
+conda activate nextflow_env
+
 # Test with stub-run (no computation, fast validation)
 nextflow run main.nf \
   -c assets/nextflow.config \
