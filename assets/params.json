@@ -1,0 +1,13 @@
+{
+    "run_id": "test",
+    "batch_ids": "74",
+    "protocol_prefix": "test",
+    "raw_sample_sheet_file_path": "/home/dutel/Data/Sample_sheet/Raw/20260323_scMIDAS2_test.csv",
+    "bcl_dir": "/sequenceurs/NovaSeq1/260323_A01789_0447_AHCHNTDMX2",
+    "genome_reference": "/labos/UGM/dev/cellranger-pipe/refdata-gex-GRCh38-2020-A",
+    "vdj_reference": "/labos/UGM/dev/cellranger-pipe/refdata-cellranger-vdj-GRCh38-alts-ensembl-7.0.0",
+    "output_dir": "/home/dutel/Result/test",
+    "log_dir": "/home/dutel/Log/test",
+    "cpu_limit": 2,
+    "memory_limit": 8
+}
