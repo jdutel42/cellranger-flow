@@ -3,7 +3,7 @@
 # Shared logging helpers for Nextflow module scripts.
 
 log_info() {
-  echo "[INFO]: ℹ️ $(date '+%Y-%m-%d %H:%M:%S') - $1"
+  echo "[INFO]: ℹ️  $(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
 log_warning() {

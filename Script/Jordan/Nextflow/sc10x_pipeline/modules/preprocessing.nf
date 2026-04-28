@@ -12,7 +12,7 @@
         path(raw_sample_sheet)       -> Raw sample sheet (CSV)
     Outputs :
         path "Index_mkfastq_${run_id}.csv"   → ch_standardized_sheet
-        path "versions.yml"                  → ch_versions
+        path "1_preprocessing_versions.yml"   → ch_versions
 ========================================================================================
 */
 
@@ -27,16 +27,16 @@ process PREPROCESSING {
     // Publish the standardized sample sheet to the output directory for reference
     // Publish the standardized sample sheet with a descriptive name
     publishDir (
-        path    : "${preprocessing_output_dir}", // Use the output directory defined in params 
+        path    : "${params.preprocessing_output_dir}", // Use the output directory defined in params 
         mode    : 'copy',
         pattern : "preprocessed_sample_sheet.csv",
         saveAs  : { _filename -> "Index_mkfastq_${run_id}.csv" }
     )
     // Publish logs to a dedicated directory
     publishDir (
-        path    : "${preprocessing_log_dir}",
+        path    : "${params.preprocessing_log_dir}",
         mode    : 'copy',
-        pattern : "logs/${today_date}_preprocessing_${run_id}.log"
+        pattern : "logs/*.log"
     )
 
     // Declare process inputs
@@ -50,7 +50,7 @@ process PREPROCESSING {
     // Output the standardized sample sheet and versions information
     output:
     path "Index_mkfastq_${run_id}.csv", emit: preprocessed_sample_sheet // Name of the standardized sample sheet channel
-    path "versions.yml", emit: versions // Emit versions information for reproducibility
+    path "1_preprocessing_versions.yml", emit: versions // Emit versions information for reproducibility
 
     // Script section to perform the preprocessing
     script:
@@ -71,14 +71,14 @@ process PREPROCESSING {
     ╔═══════════════════════════════════════════════════════════════════════════════╗
     ║                         Cell Ranger mkfastq Process Script                    ║
     ╠═══════════════════════════════════════════════════════════════════════════════╣
-    ║ Logging input parameters:                                                     ║
-    ║ - run_id: ${run_id}                                                           ║
-    ║ - raw_sample_sheet: ${raw_sample_sheet_file_path}                             ║
-    ║ - cpus: ${task.cpus}                                                          ║
-    ║ - mem_gb: ${task.memory.toGiga()}                                             ║
-    ║ - preprocessing_output_dir: ${preprocessing_output_dir}                       ║
-    ║ - preprocessing_log_dir: ${preprocessing_log_dir}                             ║
-    ║ - today_date: ${today_date}                                                   ║
+    ║ Logging input parameters:
+    ║ - run_id: ${run_id}
+    ║ - raw_sample_sheet: ${raw_sample_sheet_file_path}
+    ║ - cpus: ${params.cpu_limit}
+    ║ - mem_gb: ${params.memory_limit}
+    ║ - preprocessing_output_dir: ${preprocessing_output_dir}
+    ║ - preprocessing_log_dir: ${preprocessing_log_dir}
+    ║ - today_date: ${today_date}
     ╚═══════════════════════════════════════════════════════════════════════════════╝
     "
 
@@ -181,11 +181,11 @@ process PREPROCESSING {
     # -----------------------------------------------------------------------
     log_start "Recording tool versions for reproducibility..."
 
-    cat <<EOF > versions.yml
+    cat <<EOF > 1_preprocessing_versions.yml
     "${task.process}":
     awk: "\$(awk -W version 2>&1 | head -n1 | sed 's/\\t/ /g')"
     EOF
-        log_ok "Tool versions recorded successfully in versions.yml"
+        log_ok "Tool versions recorded successfully in 1_preprocessing_versions.yml"
 
     # -----------------------------------------------------------------------
     # End
@@ -196,5 +196,21 @@ process PREPROCESSING {
     log_log "Logs saved to ${preprocessing_log_dir}/${today_date}_preprocessing_${run_id}.log"
 
     log_success "Preprocessing of sample sheet completed successfully : ${preprocessing_output_dir}/Index_mkfastq_${run_id}.csv !"
+    """
+
+    stub:
+        """
+        mkdir -p logs
+        
+        # Create minimal CSV stub with headers
+        echo "Sample,Index" > Index_mkfastq_${run_id}.csv
+        echo "test_sample,AAAAAA" >> Index_mkfastq_${run_id}.csv
+        
+        # Create minimal versions file
+        cat > 1_preprocessing_versions.yml <<EOF
+"PREPROCESSING":
+        "run_id": "${run_id}"
+        "timestamp": "${today_date}"
+EOF
     """
 }

@@ -35,26 +35,26 @@ include { MERGE_VERSIONS      } from './modules/merge_versions.nf'
 
 def printHeader() {
     log.info """
-    ╔══════════════════════════════════════════════════════════════════════════════╗
-    ║              CellRanger_Flow — Single-Cell 10x Genomics DSL2                 ║
-    ╠══════════════════════════════════════════════════════════════════════════════╣
-    ║  run_id                   : ${params.run_id}                                 ║
-    ║  raw_sample_sheet         : ${params.raw_sample_sheet_file_path}             ║
-    ║  bcl_dir                  : ${params.bcl_dir}                                ║
-    ║  protocol_prefix          : ${params.protocol_prefix}                        ║
-    ║  batch_ids                : ${params.batch_ids}                              ║
-    ║  ref_gex                  : ${params.path_ref_gex}                           ║
-    ║  ref_vdj                  : ${params.path_ref_vdj}                           ║
-    ║  output_dir               : ${params.output_dir}                             ║
-    ║  preprocessing_output_dir : ${params.preprocessing_output_dir}               ║
-    ║  qc_output_dir            : ${params.qc_output_dir}                          ║
-    ║  alignment_output_dir     : ${params.alignment_output_dir}                   ║
-    ║  multiqc_output_dir       : ${params.multiqc_output_dir}                     ║
-    ║  log_dir                  : ${params.log_dir}                                ║
-    ║  cpu/memory_limit         : ${params.cpu_limit} / ${params.memory_limit}GB   ║
-    ║  pipeline_version         : ${params.pipeline_version}                       ║
-    ║  min_nextflow_version     : ${params.min_nextflow_version}                   ║
-    ╚══════════════════════════════════════════════════════════════════════════════╝
+    ╔════════════════════════════════════════════════════════════════════════════╗
+    ║              CellRanger_Flow — Single-Cell 10x Genomics DSL2               ║
+    ╠════════════════════════════════════════════════════════════════════════════╣
+    ║  run_id                   : ${params.run_id}
+    ║  raw_sample_sheet         : ${params.raw_sample_sheet_file_path}
+    ║  bcl_dir                  : ${params.bcl_dir}
+    ║  protocol_prefix          : ${params.protocol_prefix}
+    ║  batch_ids                : ${params.batch_ids}
+    ║  ref_gex                  : ${params.path_ref_gex}
+    ║  ref_vdj                  : ${params.path_ref_vdj}
+    ║  output_dir               : ${params.output_dir}
+    ║  preprocessing_output_dir : ${params.preprocessing_output_dir}
+    ║  qc_output_dir            : ${params.qc_output_dir}
+    ║  alignment_output_dir     : ${params.alignment_output_dir}
+    ║  multiqc_output_dir       : ${params.multiqc_output_dir}
+    ║  log_dir                  : ${params.log_dir}
+    ║  cpu/memory_limit         : ${params.cpu_limit} / ${params.memory_limit}GB
+    ║  pipeline_version         : ${params.pipeline_version}
+    ║  min_nextflow_version     : ${params.min_nextflow_version}
+    ╚════════════════════════════════════════════════════════════════════════════╝
     """.stripIndent()
 }
 
@@ -175,6 +175,7 @@ def validateParams() {
         def output_path = file(params.output_dir)
         if (!output_path.exists()) {
             log.warn "[WARNING]: ⚠️ Output directory does not exist. It will be created: ${params.output_dir}"
+            output_path.mkdirs()
         } else {
             if (!output_path.isDirectory()) {
                 error "[ERROR]: ❌ --output_dir must be a directory, not a file: ${params.output_dir}"
@@ -189,6 +190,7 @@ def validateParams() {
         def preproc_output_path = file(params.preprocessing_output_dir)
         if (!preproc_output_path.exists()) {
             log.warn "[WARNING]: ⚠️ Preprocessing output directory does not exist. It will be created: ${params.preprocessing_output_dir}"
+            preproc_output_path.mkdirs()
         } else {
             if (!preproc_output_path.isDirectory()) {
                 error "[ERROR]: ❌ --preprocessing_output_dir must be a directory, not a file: ${params.preprocessing_output_dir}"
@@ -203,6 +205,7 @@ def validateParams() {
         def qc_output_path = file(params.qc_output_dir)
         if (!qc_output_path.exists()) {
             log.warn "[WARNING]: ⚠️ QC output directory does not exist. It will be created: ${params.qc_output_dir}"
+            qc_output_path.mkdirs()
         } else {
             if (!qc_output_path.isDirectory()) {
                 error "[ERROR]: ❌ --qc_output_dir must be a directory, not a file: ${params.qc_output_dir}"
@@ -217,6 +220,7 @@ def validateParams() {
         def align_output_path = file(params.alignment_output_dir)
         if (!align_output_path.exists()) {
             log.warn "[WARNING]: ⚠️ Alignment output directory does not exist. It will be created: ${params.alignment_output_dir}"
+            align_output_path.mkdirs()
         } else {
             if (!align_output_path.isDirectory()) {
                 error "[ERROR]: ❌ --alignment_output_dir must be a directory, not a file: ${params.alignment_output_dir}"
@@ -231,6 +235,7 @@ def validateParams() {
         def multiqc_output_path = file(params.multiqc_output_dir)
         if (!multiqc_output_path.exists()) {
             log.warn "[WARNING]: ⚠️ MultiQC output directory does not exist. It will be created: ${params.multiqc_output_dir}"
+            multiqc_output_path.mkdirs()
         } else {
             if (!multiqc_output_path.isDirectory()) {
                 error "[ERROR]: ❌ --multiqc_output_dir must be a directory, not a file: ${params.multiqc_output_dir}"
@@ -245,6 +250,7 @@ def validateParams() {
         def log_path = file(params.log_dir)
         if (!log_path.exists()) {
             log.warn "[WARNING]: ⚠️ Log directory does not exist. It will be created: ${params.log_dir}"
+            log_path.mkdirs()
         } else {
             if (!log_path.isDirectory()) {
                 error "[ERROR]: ❌ --log_dir must be a directory, not a file: ${params.log_dir}"
@@ -259,6 +265,7 @@ def validateParams() {
         def preproc_log_path = file(params.preprocessing_log_dir)
         if (!preproc_log_path.exists()) {
             log.warn "[WARNING]: ⚠️ Preprocessing log directory does not exist. It will be created: ${params.preprocessing_log_dir}"
+            preproc_log_path.mkdirs()
         } else {
             if (!preproc_log_path.isDirectory()) {
                 error "[ERROR]: ❌ --preprocessing_log_dir must be a directory, not a file: ${params.preprocessing_log_dir}"
@@ -274,6 +281,7 @@ def validateParams() {
         def qc_log_path = file(params.qc_log_dir)
         if (!qc_log_path.exists()) {
             log.warn "[WARNING]: ⚠️ QC log directory does not exist. It will be created: ${params.qc_log_dir}"
+            qc_log_path.mkdirs()
         } else {
             if (!qc_log_path.isDirectory()) {
                 error "[ERROR]: ❌ --qc_log_dir must be a directory, not a file: ${params.qc_log_dir}"
@@ -288,6 +296,7 @@ def validateParams() {
         def alignment_log_path = file(params.alignment_log_dir)
         if (!alignment_log_path.exists()) {
             log.warn "[WARNING]: ⚠️ Alignment log directory does not exist. It will be created: ${params.alignment_log_dir}"
+            alignment_log_path.mkdirs()
         } else {
             if (!alignment_log_path.isDirectory()) {
                 error "[ERROR]: ❌ --alignment_log_dir must be a directory, not a file: ${params.alignment_log_dir}"
@@ -302,6 +311,7 @@ def validateParams() {
         def multiqc_log_path = file(params.multiqc_log_dir)
         if (!multiqc_log_path.exists()) {
             log.warn "[WARNING]: ⚠️ MultiQC log directory does not exist. It will be created: ${params.multiqc_log_dir}"
+            multiqc_log_path.mkdirs()
         } else {
             if (!multiqc_log_path.isDirectory()) {
                 error "[ERROR]: ❌ --multiqc_log_dir must be a directory, not a file: ${params.multiqc_log_dir}"
@@ -365,13 +375,13 @@ workflow {
 
     log.info "[INFO]: 📁 Logs published by PREPROCESSING module in ${params.preprocessing_log_dir}"
     
-    // Run PREPROCESSING module 
+    // Run PREPROCESSING module
     PREPROCESSING(
-        raw_sample_sheet_file_path: file(params.raw_sample_sheet_file_path, checkIfExists: true), // Access the raw sample sheet path from params
-        run_id: params.run_id, // Pass run_id for logging and output naming
-        preprocessing_output_dir: params.preprocessing_output_dir, // Pass output directory for standardized sample sheet
-        preprocessing_log_dir: params.preprocessing_log_dir, // Pass log directory for preprocessing logs
-        today_date: params.today_date // Pass today's date for logging and output naming
+        file(params.raw_sample_sheet_file_path, checkIfExists: true), // Access the raw sample sheet path from params
+        params.run_id, // Pass run_id for logging and output naming
+        params.preprocessing_output_dir, // Pass output directory for standardized sample sheet
+        params.preprocessing_log_dir, // Pass log directory for preprocessing logs
+        params.today_date // Pass today's date for logging and output naming
     )
 
     // Capture outputs from PREPROCESSING
@@ -387,14 +397,17 @@ workflow {
 
     log.info "[INFO]: 📁 Logs published by CELLRANGER_MKFASTQ module in ${params.qc_log_dir}"
     
-    // Run CELLRANGER_MKFASTQ module 
+    // Build mkfastq tuple input: (run_id, bcl_dir, preprocessed_sample_sheet)
+    ch_mkfastq_input = ch_preprocessed_sample_sheet.map { preprocessed_sample_sheet ->
+        tuple(params.run_id, file(params.bcl_dir), preprocessed_sample_sheet)
+    }
+
+    // Run CELLRANGER_MKFASTQ module
     CELLRANGER_MKFASTQ(
-        run_id: params.run_id, // Access the raw sample sheet path from params
-        bcl_dir: params.bcl_dir, // BCL directory from params
-        preprocessed_sample_sheet: ch_preprocessed_sample_sheet, // Use the standardized sample sheet from the previous step
-        qc_output_dir: params.qc_output_dir, // Pass output directory for FASTQ files
-        qc_log_dir: params.qc_log_dir, // Pass log directory for QC logs
-        today_date: params.today_date // Pass today's date for logging and output naming
+        ch_mkfastq_input, // Tuple input expected by module
+        params.qc_output_dir, // Pass output directory for FASTQ files
+        params.qc_log_dir, // Pass log directory for QC logs
+        params.today_date // Pass today's date for logging and output naming
     )
 
     // Capture outputs from CELLRANGER_MKFASTQ
@@ -417,17 +430,19 @@ workflow {
     ch_batch_id = channel
         .from(batch_ids_list) // From the list of batch IDs
         .map { batch_id -> "${params.protocol_prefix}_batch${batch_id}" } // Map each batch_id in batch_ids_list to a full_batch_name
+
+    // Build multi tuple input: (run_id, batch_id)
+    ch_multi_input = ch_batch_id.map { batch_id -> tuple(params.run_id, batch_id) }
     
     // Run CELLRANGER_MULTI module
     CELLRANGER_MULTI(
-        run_id: params.run_id, // Pass run_id for logging and output naming
-        batch_id: ch_batch_id, // Pass the channel of batch identifiers
-        fastq_folder: ch_fastqs, // Pass the channel of FASTQ directories generated from the previous step
-        ref_gex: file(params.path_ref_gex, checkIfExists: true), // GEX reference from params
-        ref_vdj: file(params.path_ref_vdj, checkIfExists: true), // VDJ reference from params
-        alignment_output_dir: params.alignment_output_dir, // Pass output directory for Cellranger Multi results
-        alignment_log_dir: params.alignment_log_dir, // Pass log directory for Cellranger Multi
-        today_date: params.today_date // Pass today's date for logging and output naming
+        ch_multi_input, // Tuple input expected by module
+        ch_fastqs, // Pass the channel of FASTQ directories generated from the previous step
+        file(params.path_ref_gex, checkIfExists: true), // GEX reference from params
+        file(params.path_ref_vdj, checkIfExists: true), // VDJ reference from params
+        params.alignment_output_dir, // Pass output directory for Cellranger Multi results
+        params.alignment_log_dir, // Pass log directory for Cellranger Multi
+        params.today_date // Pass today's date for logging and output naming
     )
 
     // Capture outputs from CELLRANGER_MULTI
@@ -454,11 +469,11 @@ workflow {
 
     // Run MULTIQC module
     MULTIQC(
-        run_id: params.run_id, // Pass run_id for logging and output naming
-        qc_files: ch_qc_files.collect(), // Pass the channel of QC files collected (metrics summaries and web summaries) generated from Cellranger Multi
-        multiqc_output_dir: params.multiqc_output_dir, // Pass output directory for MultiQC results
-        multiqc_log_dir: params.multiqc_log_dir, // Pass log directory for MultiQC logs
-        today_date: params.today_date // Pass today's date for logging and output naming
+        ch_qc_files.collect(), // Pass the channel of QC files collected (metrics summaries and web summaries) generated from Cellranger Multi
+        params.run_id, // Pass run_id for logging and output naming
+        params.multiqc_output_dir, // Pass output directory for MultiQC results
+        params.multiqc_log_dir, // Pass log directory for MultiQC logs
+        params.today_date // Pass today's date for logging and output naming
     )
 
     ch_versions = ch_versions.mix(MULTIQC.out.versions)
@@ -472,10 +487,10 @@ workflow {
 
     // Merge all per-module versions.yml files into one dated versions file
     MERGE_VERSIONS(
-        run_id: params.run_id, // Pass run_id for logging and output naming
-        ch_versions: ch_versions.collect(),
-        log_dir: params.log_dir,
-        today_date: params.today_date
+        params.run_id, // Pass run_id for logging and output naming
+        ch_versions.collect(),
+        params.log_dir,
+        params.today_date
     )
 
     log.info "[INFO]: ✅ Merged versions file available at: ${params.log_dir}/${params.today_date}_versions.yaml"
@@ -485,25 +500,28 @@ workflow {
     // -----------------------------------------------------------------------
     log.info "[INFO]: ✅✅✅ Pipeline completed successfully !"
 
+    // Capture values now because params can be unavailable in event handler scope
+    def finalLogDir = params.log_dir
+    def finalTodayDate = params.today_date
+    def nfLogPath = '.nextflow.log'
+
     workflow.onComplete {
-    def src = file("${launchDir}/.nextflow.log")
-    def dst = file("${params.log_dir}/${params.today_date}_nextflow.log")
+    def src = file(nfLogPath)
+    def dst = file("${finalLogDir}/${finalTodayDate}_nextflow.log")
 
     if (src.exists()) {
-        dst.parentFile.mkdirs()
+        file(finalLogDir).mkdirs()
         src.copyTo(dst, overwrite: true)
         log.info "[INFO]: 📁 Nextflow log copied to: ${dst}"
     } else {
         log.warn "[WARNING]: ⚠️ Nextflow log not found: ${src}"
     }
 
-    log.info "[INFO]: ✅ Pipeline finished with status: ${workflow.success ? 'SUCCESS' : 'FAILED'}"
-    log.info "[INFO]: ⏳ Duration: ${workflow.duration}"
-    log.info "[INFO]: 📁 Work dir: ${workflow.workDir}"
+    log.info "[INFO]: ✅ Pipeline finished (onComplete handler reached)."
 }
 
     workflow.onError {
-        log.error "[ERROR]: ❌ Pipeline failed: ${workflow.errorMessage}"
+        log.error "[ERROR]: ❌ Pipeline failed. Check .nextflow.log for details."
     } 
 
 }

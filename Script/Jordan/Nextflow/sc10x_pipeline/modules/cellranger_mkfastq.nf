@@ -10,7 +10,7 @@
         tuple val(run_id), path(bcl_dir), path(sample_sheet)
     Outputs :
         path("fastq_output_${run_id}")          → ch_fastqs
-        path "versions.yml"                     → ch_versions
+        path "2_cellranger_mkfastq_versions.yml" → ch_versions
 ========================================================================================
 */
 
@@ -27,16 +27,16 @@ process CELLRANGER_MKFASTQ {
 
     // Publish FASTQ files to the output directory for downstream analysis
     publishDir (
-        path    : qc_output_dir, // Use the QC output directory for FASTQ outputs
+        path    : params.qc_output_dir, // Use the QC output directory for FASTQ outputs
         mode    : 'copy', // Copy files to the output directory
         pattern : "fastq_output_${run_id}/**/*.fastq.gz", // Publish all files generated in work/fastq_output/ to qc_output_dir directory. ** is used to include all subdirectories (e.g., lane1, lane2) where FASTQ files are generated
     )
     
     // Publish logs to a dedicated directory
     publishDir (
-        path    : qc_log_dir, // Use the QC log directory for logs
+        path    : params.qc_log_dir, // Use the QC log directory for logs
         mode    : 'copy', // Copy logs to the output directory
-        pattern : "logs/${today_date}_mkfastq_${run_id}.log" // Publish all log files generated in work/logs/ to qc_log_dir directory
+        pattern : "logs/*.log" // Publish log files generated in work/logs/ to qc_log_dir directory
     )
 
     // Declare process inputs
@@ -49,7 +49,7 @@ process CELLRANGER_MKFASTQ {
     // Output the generated FASTQ files, versions information, and logs
     output:
         path("fastq_output_${run_id}"), emit: fastqs
-        path "versions.yml", emit: versions
+        path "2_cellranger_mkfastq_versions.yml", emit: versions
 
     // Script section to run cellranger mkfastq
     script:
@@ -70,15 +70,15 @@ process CELLRANGER_MKFASTQ {
         ╔═══════════════════════════════════════════════════════════════════════════════╗
         ║                         Cell Ranger mkfastq Process Script                    ║
         ╠═══════════════════════════════════════════════════════════════════════════════╣
-        ║ Logging input parameters:                                                     ║
-        ║ - run_id: ${run_id}                                                           ║
-        ║ - bcl_dir: ${bcl_dir}                                                         ║
-        ║ - sample_sheet: ${preprocessed_sample_sheet}                                  ║
-        ║ - cpus: ${task.cpus}                                                          ║
-        ║ - mem_gb: ${task.memory.toGiga()}                                             ║
-        ║ - qc_output_dir: ${qc_output_dir}                                             ║
-        ║ - qc_log_dir: ${qc_log_dir}                                                   ║
-        ║ - today_date: ${today_date}                                                   ║
+        ║ Logging input parameters:
+        ║ - run_id: ${run_id}
+        ║ - bcl_dir: ${bcl_dir}
+        ║ - sample_sheet: ${preprocessed_sample_sheet}
+        ║ - cpus: ${params.cpu_limit}
+        ║ - mem_gb: ${params.memory_limit}
+        ║ - qc_output_dir: ${qc_output_dir}
+        ║ - qc_log_dir: ${qc_log_dir}
+        ║ - today_date: ${today_date}
         ╚═══════════════════════════════════════════════════════════════════════════════╝
         "
 
@@ -115,13 +115,13 @@ process CELLRANGER_MKFASTQ {
         log_start "Running cellranger mkfastq for run_id = ${run_id}..."
 
         # See if run_ID is FlowCellID HCHNTDMX2 or CelineID 260323_A01789_0447_AHCHNTDMX2 (I think FlowCellID HCHNTDMX2 is better)
-        cellranger mkfastq \\
-            --id="${run_id}" \\ 
+        /labos/UGM/dev/cellranger-7.1.0/bin/cellranger mkfastq \\
             --run="${bcl_dir}" \\
+            --id="${run_id}" \\
             --csv="${preprocessed_sample_sheet}" \\
             --output-dir=fastq_output_${run_id} \\
-            --localcores=${task.cpus} \\
-            --localmem=${task.memory.toGiga()} 
+            --localcores=${params.cpu_limit} \\
+            --localmem=${params.memory_limit}
 
         log_ok "Cellranger mkfastq finished for run_id = ${run_id}"
 
@@ -175,4 +175,20 @@ process CELLRANGER_MKFASTQ {
 
         log_success "Cell Ranger mkfastq process completed successfully for run_id = ${run_id} !"
         """
+    
+    stub:
+    """
+    mkdir -p fastq_output_${run_id}/lane1 logs
+    
+    # Create dummy FASTQ files
+    touch fastq_output_${run_id}/lane1/${run_id}_S1_L001_R1_001.fastq.gz
+    touch fastq_output_${run_id}/lane1/${run_id}_S1_L001_R2_001.fastq.gz
+    
+    # Create minimal versions file
+    cat > 2_cellranger_mkfastq_versions.yml <<EOF
+"CELLRANGER_MKFASTQ":
+    "cellranger": "7.1.0"
+    "run_id": "${run_id}"
+EOF
+    """
 }

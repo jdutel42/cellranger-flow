@@ -2,9 +2,9 @@ process MERGE_VERSIONS {
     tag "${task.process.toLowerCase()}_${run_id}"
 
     publishDir (
-        path    : log_dir,
+        path    : params.log_dir,
         mode    : 'copy',
-        pattern : "${today_date}_versions.yaml"
+        pattern : "*_versions.yaml"
     )
 
     input:
@@ -34,4 +34,14 @@ process MERGE_VERSIONS {
 
         mv "\$tmp_file" "${today_date}_versions.yaml"
         """
+
+    stub:
+    """
+    cat > "${today_date}_versions.yaml" <<EOF
+"MERGE_VERSIONS":
+    "run_id": "${run_id}"
+    "timestamp": "${today_date}"
+    "all_versions_merged": true
+EOF
+    """
 }

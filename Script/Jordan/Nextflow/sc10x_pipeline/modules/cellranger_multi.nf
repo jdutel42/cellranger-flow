@@ -20,7 +20,7 @@
     Outputs :
         tuple val(batch_id), path("multi_output/${batch_id}/outs/metrics_summary.csv") → ch_metrics
         tuple val(batch_id), path("multi_output/${batch_id}/outs/web_summary.html") → ch_web_summaries
-        path "versions.yml" → ch_versions
+        path "3_cellranger_multi_versions.yml" → ch_versions
 ========================================================================================
 */
 
@@ -35,16 +35,16 @@ process CELLRANGER_MULTI {
 
     // Publish key outputs to output_dir
     publishDir (
-        path    : alignment_output_dir, // Use the alignment output directory for Cellranger Multi results
+        path    : params.alignment_output_dir, // Use the alignment output directory for Cellranger Multi results
         mode    : 'copy',
         pattern : "multi_output/**",
         saveAs  : { filename -> filename }
     )
     
     publishDir (
-        path    : alignment_log_dir, // Use the alignment log directory for Cellranger Multi logs
+        path    : params.alignment_log_dir, // Use the alignment log directory for Cellranger Multi logs
         mode    : 'copy',
-        pattern : "logs/${today_date}_multi_${run_id}_${batch_id}.log"
+        pattern : "logs/*.log"
     )
 
     input:
@@ -59,7 +59,7 @@ process CELLRANGER_MULTI {
     output:
         tuple val(batch_id), path("multi_output/${batch_id}/outs/metrics_summary.csv"),         emit: metrics
         tuple val(batch_id), path("multi_output/${batch_id}/outs/web_summary.html"),            emit: web_summaries
-        path "versions.yml",                                                                    emit: versions
+        path "3_cellranger_multi_versions.yml",                                                                    emit: versions
 
     script:
         """
@@ -79,17 +79,17 @@ process CELLRANGER_MULTI {
         ╔═══════════════════════════════════════════════════════════════════════════════╗
         ║                         Cell Ranger multi Process Script                      ║
         ╠═══════════════════════════════════════════════════════════════════════════════╣
-        ║ Logging input parameters:                                                     ║
-        ║ - run_id: ${run_id}                                                           ║
-        ║ - batch_id: ${batch_id}                                                       ║
-        ║ - fastq_folder: ${fastq_folder}                                               ║
-        ║ - ref_gex: ${ref_gex}                                                         ║
-        ║ - ref_vdj: ${ref_vdj}                                                         ║
-        ║ - cpus: ${task.cpus}                                                          ║
-        ║ - mem_gb: ${task.memory.toGiga()}                                             ║
-        ║ - alignment_output_dir: ${alignment_output_dir}                               ║
-        ║ - alignment_log_dir: ${alignment_log_dir}                                     ║
-        ║ - today_date: ${today_date}                                                   ║
+        ║ Logging input parameters:
+        ║ - run_id: ${run_id}
+        ║ - batch_id: ${batch_id}
+        ║ - fastq_folder: ${fastq_folder}
+        ║ - ref_gex: ${ref_gex}
+        ║ - ref_vdj: ${ref_vdj}
+        ║ - cpus: ${params.cpu_limit}
+        ║ - mem_gb: ${params.memory_limit}
+        ║ - alignment_output_dir: ${alignment_output_dir}
+        ║ - alignment_log_dir: ${alignment_log_dir}
+        ║ - today_date: ${today_date}
         ╚═══════════════════════════════════════════════════════════════════════════════╝
         "
 
@@ -151,11 +151,11 @@ EOF
         
         log_start "Running Cell Ranger multi for run_id ${run_id} & batch_id ${batch_id}..."
         
-        cellranger multi \
+        /labos/UGM/dev/cellranger-7.1.0/bin/cellranger multi \
             --id="${batch_id}" \
             --csv="config_sample_${batch_id}.csv" \
-            --localcores=${task.cpus} \
-            --localmem=${task.memory.toGiga()} \
+            --localcores=${params.cpu_limit} \
+            --localmem=${params.memory_limit} \
             2>&1 | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
 
         EXIT_CODE=\${PIPESTATUS[0]}
@@ -197,12 +197,12 @@ EOF
         
         log_start "Recording tool versions for reproducibility..."
         
-        cat <<-END_VERSIONS > versions.yml
+        cat <<-END_VERSIONS > 3_cellranger_multi_versions.yml
         "${task.process}":
             cellranger: \$(cellranger --version 2>&1 | grep -oP 'cellranger-\\K[0-9.]+')
         END_VERSIONS
 
-        log_ok "Tool versions recorded successfully in versions.yml"
+        log_ok "Tool versions recorded successfully in 3_cellranger_multi_versions.yml"
 
         # -----------------------------------------------------------------------
         # End
@@ -214,4 +214,38 @@ EOF
 
         log_success "Cell Ranger multi process completed successfully for run_id = ${run_id} & batch_id = ${batch_id} !"
         """
+
+    stub:
+    """
+    mkdir -p multi_output/${batch_id}/outs logs
+    
+    # Create minimal metrics CSV
+    cat > multi_output/${batch_id}/outs/metrics_summary.csv <<EOF
+Metric,Value
+"Estimated Number of Cells","1000"
+"Mean Reads per Cell","50000"
+"Median UMI Counts per Cell","5000"
+EOF
+    
+    # Create minimal HTML report
+    cat > multi_output/${batch_id}/outs/web_summary.html <<EOF
+<!DOCTYPE html>
+<html>
+<head><title>Cell Ranger Multi Report - ${batch_id}</title></head>
+<body>
+<h1>Cell Ranger Multi Report (STUB)</h1>
+<p>Run ID: ${run_id}</p>
+<p>Batch ID: ${batch_id}</p>
+<p>Estimated Cells: 1000</p>
+</body>
+</html>
+EOF
+    
+    # Create minimal versions file
+    cat > 3_cellranger_multi_versions.yml <<EOF
+"CELLRANGER_MULTI":
+    "cellranger": "7.1.0"
+    "batch_id": "${batch_id}"
+EOF
+    """
 }
