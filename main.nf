@@ -468,7 +468,7 @@ workflow {
     MERGE_VERSIONS(
         params.run_id, // Pass run_id for logging and output naming
         ch_versions.collect(),
-        params.log_dir,
+        params.run_traceability_log_dir, // Pass log directory for traceability logs (merged versions.yml)
         params.today_date
     )
 

@@ -2,7 +2,7 @@ process MERGE_VERSIONS {
     tag "${task.process.toLowerCase()}_${run_id}"
 
     publishDir (
-        path    : params.log_dir,
+        path    : params.run_traceability_log_dir,
         mode    : 'copy',
         pattern : "*_versions.yaml"
     )
@@ -10,7 +10,7 @@ process MERGE_VERSIONS {
     input:
         val run_id
         path ch_versions
-        val log_dir
+        val run_traceability_log_dir
         val today_date
 
     output:
@@ -39,7 +39,7 @@ process MERGE_VERSIONS {
 
         mv "\$tmp_file" "${today_date}_versions.yaml"
 
-        log_success "Versions information merged successfully for run_id = ${run_id} and saved to ${params.log_dir}/${today_date}_versions.yaml!"
+        log_success "Versions information merged successfully for run_id = ${run_id} and saved to ${params.run_traceability_log_dir}/${today_date}_versions.yaml!"
         """
 
     stub:
