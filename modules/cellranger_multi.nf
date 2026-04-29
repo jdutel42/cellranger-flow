@@ -27,7 +27,7 @@
 process CELLRANGER_MULTI {
 
     // Tag and label for logging and resource allocation
-    tag "${task.process.toLowerCase()}_${run_id}_${batch_id}" // Log the run ID for traceability
+    tag "CrM_${batch_id}_${run_id}" // Log the run ID for traceability
     label 'process_high'
 
     // Use conda environment for reproducibility

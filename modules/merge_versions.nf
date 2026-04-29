@@ -1,5 +1,5 @@
 process MERGE_VERSIONS {
-    tag "${task.process.toLowerCase()}_${run_id}"
+    tag "Mrg_${run_id}"
 
     publishDir (
         path    : params.run_traceability_log_dir,
