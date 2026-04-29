@@ -36,5 +36,5 @@ log_verify() {
 }
 
 log_log() {
-    echo "[LOG]: 📝 [$(date '+%Y-%m-%d %H:%M:%S')] $1"
+    echo "[LOG]: 📝 $(date '+%Y-%m-%d %H:%M:%S') - $1"
 }

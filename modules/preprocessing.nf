@@ -29,7 +29,7 @@ process PREPROCESSING {
     publishDir (
         path    : "${params.preprocessing_output_dir}", // Use the output directory defined in params 
         mode    : 'copy',
-        pattern : "preprocessed_sample_sheet.csv",
+        pattern : "Index_mkfastq_${run_id}.csv", // Publish the standardized sample sheet with a descriptive name
         saveAs  : { _filename -> "Index_mkfastq_${run_id}.csv" }
     )
     // Publish logs to a dedicated directory
@@ -69,7 +69,7 @@ process PREPROCESSING {
 
     log_info "
     ╔═══════════════════════════════════════════════════════════════════════════════╗
-    ║                         Cell Ranger mkfastq Process Script                    ║
+    ║                         Preprocessing Process Script                    ║
     ╠═══════════════════════════════════════════════════════════════════════════════╣
     ║ Logging input parameters:
     ║ - run_id: ${run_id}
