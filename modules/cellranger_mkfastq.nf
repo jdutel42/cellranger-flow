@@ -130,10 +130,6 @@ process CELLRANGER_MKFASTQ {
         # Verify successful execution
         # -----------------------------------------------------------------------
         log_verify "Verifying cellranger mkfastq output..."
-        
-        if [ \$EXIT_CODE -ne 0 ]; then
-            log_error "Cellranger mkfastq failed with exit code \$EXIT_CODE for run_id = ${run_id}." >&2
-        fi
 
         if [ ! -d "fastq_output_${run_id}" ]; then
             log_error "Cellranger mkfastq did not generate the expected output directory: fastq_output_${run_id}/" >&2

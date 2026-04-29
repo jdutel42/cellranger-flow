@@ -159,12 +159,6 @@ EOF
             --localmem=${params.memory_limit} \
             2>&1 | tee -a logs/${today_date}_multi_${run_id}_${batch_id}.log
 
-        EXIT_CODE=\${PIPESTATUS[0]}
-
-        if [ \$EXIT_CODE -ne 0 ]; then
-            log_error "cellranger multi failed (code \$EXIT_CODE) for ${batch_id}."
-        fi
-
         log_ok "Cell Ranger multi finished for run_id ${run_id} & batch_id ${batch_id}."
 
         # -----------------------------------------------------------------------

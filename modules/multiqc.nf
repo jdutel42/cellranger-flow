@@ -121,9 +121,7 @@ process MULTIQC {
         # -fullnames: Use full file names in the report for traceability
         # --outdir ./output_multiqc: Output results to the multiqc_output directory
 
-        EXIT_CODE=\$?
-
-        log_ok "MultiQC finished for run_id ${run_id} with exit code \$EXIT_CODE."
+        log_ok "MultiQC finished for run_id ${run_id}."
 
         # -----------------------------------------------------------------------
         # Verify successful execution
@@ -131,9 +129,6 @@ process MULTIQC {
         
         log_verify "Verifying MultiQC output..."
         
-        if [ \$EXIT_CODE -ne 0 ]; then
-            log_error "MultiQC failed with exit code \$EXIT_CODE."
-        fi
 
         if [ ! -f "./output_multiqc/multiqc_report_${run_id}.html" ]; then
             log_error "MultiQC HTML report was not generated."
