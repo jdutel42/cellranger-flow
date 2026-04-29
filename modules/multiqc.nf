@@ -65,6 +65,9 @@ process MULTIQC {
         # Load shared logging helpers
         source "${params.logging_script}"
 
+        log_start "Step 4: Performing MultiQC for run_id = ${run_id}..."
+        log_log "Logs will be saved to ${multiqc_log_dir}/${today_date}_multiqc_${run_id}.log"
+
         log_info "
         ╔═══════════════════════════════════════════════════════════════════════════════╗
         ║                         MultiQC Process Script                                ║
@@ -79,8 +82,6 @@ process MULTIQC {
         ║ - today_date: ${today_date}
         ╚═══════════════════════════════════════════════════════════════════════════════╝
         "
-
-        log_start "Starting MultiQC for run_id ${run_id}..."
 
         # -------------------------------------------------------------------------
         # Initialisation & Verification
@@ -163,7 +164,7 @@ process MULTIQC {
         log_log "Versions information will be saved to ${params.log_dir}/versions.yml"
         log_log "Logs saved to ${multiqc_log_dir}/${today_date}_multiqc_${run_id}.log"
 
-        log_success "MultiQC process completed successfully for run_id = ${run_id} !"
+        log_success "MultiQC process completed successfully for run_id = ${run_id} and report available at ${params.multiqc_output_dir}!"
         """
     
     stub:

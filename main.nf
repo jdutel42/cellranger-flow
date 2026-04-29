@@ -371,10 +371,7 @@ workflow {
     // -----------------------------------------------------------------------
     // STEP 1: Preprocess the sample sheet to standardize it for downstream tools
     // -----------------------------------------------------------------------
-    log.info "[INFO]: 🚀 Step 1: Preprocessing/Standardizing sample sheet..."
 
-    log.info "[INFO]: 📁 Logs published by PREPROCESSING module in ${params.preprocessing_log_dir}"
-    
     // Run PREPROCESSING module
     PREPROCESSING(
         file(params.raw_sample_sheet_file_path, checkIfExists: true), // Access the raw sample sheet path from params
@@ -388,15 +385,10 @@ workflow {
     ch_preprocessed_sample_sheet = PREPROCESSING.out.preprocessed_sample_sheet // Capture channel for standardized sample sheet
     ch_versions = ch_versions.mix(PREPROCESSING.out.versions) // Capture channel for versions information (mix for cumulation across steps)
 
-    log.info "[INFO]: ✅ Sample sheet preprocessing completed. Standardized sample sheet available at: ${params.preprocessing_output_dir}"
-
     // -----------------------------------------------------------------------
     // STEP 2: Process BCL files to FASTQ according standardized sample sheet
     // -----------------------------------------------------------------------
-    log.info "[INFO]: 🚀 Step 2: Processing BCL files to FASTQ..."
 
-    log.info "[INFO]: 📁 Logs published by CELLRANGER_MKFASTQ module in ${params.qc_log_dir}"
-    
     // Build mkfastq tuple input: (run_id, bcl_dir, preprocessed_sample_sheet)
     ch_mkfastq_input = ch_preprocessed_sample_sheet.map { preprocessed_sample_sheet ->
         tuple(params.run_id, file(params.bcl_dir), preprocessed_sample_sheet)
@@ -414,14 +406,9 @@ workflow {
     ch_fastqs = CELLRANGER_MKFASTQ.out.fastqs // Capture channel for generated FASTQ files
     ch_versions = ch_versions.mix(CELLRANGER_MKFASTQ.out.versions) // Capture channel for versions information (mix for cumulation across steps)
     
-    log.info "[INFO]: ✅ BCL to FASTQ processing completed. FASTQ files available at: ${params.qc_output_dir}"
-
     // -----------------------------------------------------------------------
     // STEP 3: Perform Alignment with Cellranger Multi
     // -----------------------------------------------------------------------
-    log.info "[INFO]: 🚀 Step 3: Performing alignment with Cellranger Multi..."
-
-    log.info "[INFO]: 📁 Logs published by CELLRANGER_MULTI module in ${params.alignment_log_dir}"
 
     // Convert the comma-separated batch IDs string into a list of batch id
     batch_ids_list = params.batch_ids.toString().split(',') // Split the comma-separated batch IDs into a list of batch_id
@@ -450,15 +437,10 @@ workflow {
     ch_web_summaries = CELLRANGER_MULTI.out.web_summaries // Capture channel for web summaries
     ch_versions = ch_versions.mix(CELLRANGER_MULTI.out.versions) // Capture channel for versions information (mix for cumulation across steps)
 
-    log.info "[INFO]: ✅ Cellranger Multi processing completed. Results available at: ${params.alignment_output_dir}"
-
     // -----------------------------------------------------------------------
     // STEP 4: MultiQC report generation
     // -----------------------------------------------------------------------
-    log.info "[INFO]: 🚀 Step 4: Generating MultiQC report..."
 
-    log.info "[INFO]: 📁 Logs published by MULTIQC module in ${params.multiqc_log_dir}"
-    
     // Combine metrics summaries and web summaries into a single channel for MultiQC input
     ch_qc_files = 
         ch_metrics.map { _batch_id, f -> f } // In ch_metrics (that is a tuple(batch_id, metrics_file_path)), extract the file path (f) for each batch_id and create a channel of metrics summary files
@@ -478,12 +460,9 @@ workflow {
 
     ch_versions = ch_versions.mix(MULTIQC.out.versions)
 
-    log.info "[INFO]: ✅ MultiQC completed. Report available at: ${params.multiqc_output_dir}"
-
     // -----------------------------------------------------------------------
     // STEP 5: Merge versions
     // -----------------------------------------------------------------------
-    log.info "[INFO]: 🚀 Step 5: Merging versions information from all steps for traceability..."
 
     // Merge all per-module versions.yml files into one dated versions file
     MERGE_VERSIONS(
@@ -493,12 +472,9 @@ workflow {
         params.today_date
     )
 
-    log.info "[INFO]: ✅ Merged versions file available at: ${params.log_dir}/${params.today_date}_versions.yaml"
-
     // -----------------------------------------------------------------------
     // Finishing workflow and logging
     // -----------------------------------------------------------------------
-    log.info "[INFO]: ✅✅✅ Pipeline completed successfully !"
 
     // Capture values now because params can be unavailable in event handler scope
     def finalLogDir = params.log_dir
@@ -517,8 +493,8 @@ workflow {
         log.warn "[WARNING]: ⚠️ Nextflow log not found: ${src}"
     }
 
-    log.info "[INFO]: ✅ Pipeline finished (onComplete handler reached)."
-}
+    log.info "[INFO]: ✅✅✅ Pipeline completed successfully !"
+    }
 
     workflow.onError {
         log.error "[ERROR]: ❌ Pipeline failed. Check .nextflow.log for details."

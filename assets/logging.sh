@@ -23,6 +23,10 @@ log_save() {
     echo "[SAVE]: 💾 $(date '+%Y-%m-%d %H:%M:%S') - $1"
 }
 
+log_init() {
+    echo "[INIT]: 🚀🚀🚀  $(date '+%Y-%m-%d %H:%M:%S') - $1"
+}
+
 log_start() {
     echo "[START]: 🚀 $(date '+%Y-%m-%d %H:%M:%S') - $1"
 }

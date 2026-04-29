@@ -67,6 +67,10 @@ process PREPROCESSING {
     # Load shared logging helpers
     source "${params.logging_script}"
 
+    log_init "Step 1: Preprocessing sample sheet = ${raw_sample_sheet_file_path}..."
+
+    log_log "Logs will be saved to ${preprocessing_log_dir}/${today_date}_preprocessing_${run_id}.log"
+
     log_info "
     ╔═══════════════════════════════════════════════════════════════════════════════╗
     ║                         Preprocessing Process Script                    ║
@@ -81,8 +85,6 @@ process PREPROCESSING {
     ║ - today_date: ${today_date}
     ╚═══════════════════════════════════════════════════════════════════════════════╝
     "
-
-    log_start "Starting sample sheet preprocessing: ${raw_sample_sheet_file_path}..."
 
     # ============================================================================
     # Initialisation

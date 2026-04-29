@@ -20,6 +20,11 @@ process MERGE_VERSIONS {
         """
         set -euo pipefail
 
+        # Load shared logging helpers
+        source "${params.logging_script}"
+
+        log_start "Step 5: Merging versions information for run_id = ${run_id}..."
+
         tmp_file="merged_versions.tmp"
         : > "\$tmp_file"
 
@@ -33,6 +38,8 @@ process MERGE_VERSIONS {
         done
 
         mv "\$tmp_file" "${today_date}_versions.yaml"
+
+        log_success "Versions information merged successfully for run_id = ${run_id} and saved to ${params.log_dir}/${today_date}_versions.yaml!"
         """
 
     stub:

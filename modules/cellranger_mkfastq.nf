@@ -66,6 +66,9 @@ process CELLRANGER_MKFASTQ {
         # Load shared logging helpers
         source "${params.logging_script}"
 
+        log_init "Step 2: Processing BCL files to FASTQ with Cellranger mkfastq for run_id = ${run_id}"
+        log_log "Logs will be saved to ${qc_log_dir}/${today_date}_mkfastq_${run_id}.log"
+
         log_info "
         ╔═══════════════════════════════════════════════════════════════════════════════╗
         ║                         Cell Ranger mkfastq Process Script                    ║
@@ -81,8 +84,6 @@ process CELLRANGER_MKFASTQ {
         ║ - today_date: ${today_date}
         ╚═══════════════════════════════════════════════════════════════════════════════╝
         "
-
-        log_start "Starting cellranger mkfastq process for run_id = ${run_id}"
 
         # ============================================================================
         # Initialisation & Verification
@@ -173,7 +174,7 @@ process CELLRANGER_MKFASTQ {
         log_log "Versions information will be saved to ${params.log_dir}/versions.yml"
         log_log "Logs saved to ${qc_log_dir}/${today_date}_mkfastq_${run_id}.log"
 
-        log_success "Cell Ranger mkfastq process completed successfully for run_id = ${run_id} !"
+        log_success "Cell Ranger mkfastq processed BCL to FASTQ successfully for run_id = ${run_id} and FASTQ files are available at ${params.qc_output_dir} !"
         """
     
     stub:
