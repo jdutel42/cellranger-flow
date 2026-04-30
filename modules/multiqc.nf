@@ -156,7 +156,7 @@ process MULTIQC {
         # -----------------------------------------------------------------------
 
         log_save "MultiQC output for run_id ${run_id} saved to ${multiqc_output_dir}."
-        log_log "Versions information will be saved to ${params.log_dir}/versions.yml"
+        log_log "Versions information will be saved to ${params.run_traceability_log_dir}/${today_date}_versions.yaml"
         log_log "Logs saved to ${multiqc_log_dir}/${today_date}_multiqc_${run_id}.log"
 
         log_success "MultiQC process completed successfully for run_id = ${run_id} and report available at ${params.multiqc_output_dir}!"

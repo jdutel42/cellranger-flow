@@ -155,19 +155,19 @@ process CELLRANGER_MKFASTQ {
         # -----------------------------------------------------------------------
         log_start "Recording tool versions for reproducibility..."
 
-        cat <<-END_VERSIONS > versions.yml
+        cat <<-END_VERSIONS > 2_cellranger_mkfastq_versions.yml
         "${task.process}":
             cellranger: \$(cellranger --version 2>&1 | grep -oP 'cellranger-\\K[0-9.]+')
         END_VERSIONS
 
-        log_ok "Tool versions recorded successfully in versions.yml"
+        log_ok "Tool versions recorded successfully in 2_cellranger_mkfastq_versions.yml"
 
         # -----------------------------------------------------------------------
         # End
         # -----------------------------------------------------------------------
         
         log_save "Cellranger multi output fo run_id ${run_id} saved to ${qc_output_dir}/fastq_output_${run_id}/."
-        log_log "Versions information will be saved to ${params.log_dir}/versions.yml"
+        log_log "Versions information will be saved to ${params.run_traceability_log_dir}/${today_date}_versions.yaml"
         log_log "Logs saved to ${qc_log_dir}/${today_date}_mkfastq_${run_id}.log"
 
         log_success "Cell Ranger mkfastq processed BCL to FASTQ successfully for run_id = ${run_id} and FASTQ files are available at ${params.qc_output_dir} !"

@@ -59,7 +59,7 @@ process CELLRANGER_MULTI {
     output:
         tuple val(batch_id), path("multi_output/${batch_id}/outs/metrics_summary.csv"),         emit: metrics
         tuple val(batch_id), path("multi_output/${batch_id}/outs/web_summary.html"),            emit: web_summaries
-        path "3_cellranger_multi_versions.yml",                                                                    emit: versions
+        path "3_cellranger_multi_versions.yml",                                                 emit: versions
 
     script:
         """
@@ -204,7 +204,7 @@ EOF
         # -----------------------------------------------------------------------
 
         log_save "Cellranger multi output fo run_id ${run_id} & batch_id ${batch_id} saved to ${alignment_output_dir}/multi_output/${batch_id}/."
-        log_log "Versions information will be saved to ${params.log_dir}/versions.yml"
+        log_log "Versions information will be saved to ${params.run_traceability_log_dir}/${today_date}_versions.yaml"
         log_log "Logs saved to ${alignment_log_dir}/${today_date}_multi_${run_id}_${batch_id}.log"
 
         log_success "CellRanger multi process completed successfully for run_id = ${run_id} & batch_id = ${batch_id} and results are available at ${params.alignment_output_dir}!"

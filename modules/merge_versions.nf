@@ -39,7 +39,7 @@ process MERGE_VERSIONS {
 
         mv "\$tmp_file" "${today_date}_versions.yaml"
 
-        log_success "Versions information merged successfully for run_id = ${run_id} and saved to ${params.run_traceability_log_dir}/${today_date}_versions.yaml!"
+        log_success "Versions information merged successfully for run_id = ${run_id} and saved to ${params.run_traceability_log_dir}/${today_date}_versions.yaml !"
         """
 
     stub:

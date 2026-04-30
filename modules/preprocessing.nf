@@ -194,7 +194,7 @@ process PREPROCESSING {
     # -----------------------------------------------------------------------
     
     log_save "Preprocessed sample sheet for run_id ${run_id} saved to ${preprocessing_output_dir}/Index_mkfastq_${run_id}.csv."
-    log_log "Versions information will be saved to ${params.log_dir}/versions.yml"
+    log_log "Versions information will be saved to ${params.run_traceability_log_dir}/${today_date}_versions.yaml"
     log_log "Logs saved to ${preprocessing_log_dir}/${today_date}_preprocessing_${run_id}.log"
 
     log_success "Preprocessing of sample sheet completed successfully : ${preprocessing_output_dir}/Index_mkfastq_${run_id}.csv !"
