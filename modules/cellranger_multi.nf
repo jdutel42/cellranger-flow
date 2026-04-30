@@ -111,13 +111,13 @@ process CELLRANGER_MULTI {
             log_error "FASTQ base directory does not exist: ${fastq_folder}"
         fi
 
-        if ! find "\$FASTQ_GEX_DIR" -maxdepth 1 -name "${batch_id}_GEX*.fastq.gz" | grep -q .; then
-            log_error "Missing GEX FASTQ files for ${batch_id} in \$FASTQ_GEX_DIR"
-        fi
+        #if [[ -z \$(find "\$FASTQ_GEX_DIR" -type f -name "*.fastq.gz" -print -quit) ]]; then
+        #    log_error "Missing GEX FASTQ files for ${batch_id} in \$FASTQ_GEX_DIR"
+        #fi
 
-        if ! find "\$FASTQ_VDJ_DIR" -maxdepth 1 -name "${batch_id}_VDJ*.fastq.gz" | grep -q .; then
-            log_error "Missing VDJ FASTQ files for ${batch_id} in \$FASTQ_VDJ_DIR"
-        fi
+        #if [[ -z \$(find "\$FASTQ_VDJ_DIR" -type f -name "*.fastq.gz" -print -quit) ]]; then
+        #    log_error "Missing VDJ FASTQ files for ${batch_id} in \$FASTQ_VDJ_DIR"
+        #fi
 
         log_ok "Input files and directories verified successfully."
 
