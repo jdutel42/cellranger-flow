@@ -18,7 +18,7 @@
 
 process MULTIQC {
 
-    tag "MQC_${run_id}" // Log the run ID for traceability
+    tag "MQC_${run_id}" // Log the run ID for traceability for "MQC" = "MultiQC"
     label 'process_high' // Label for resource allocation
 
     // Use container for reproducibility
