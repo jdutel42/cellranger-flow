@@ -8,6 +8,7 @@
     "vdj_reference": "/labos/UGM/dev/cellranger-pipe/refdata-cellranger-vdj-GRCh38-alts-ensembl-7.0.0",
     "output_dir": "/home/dutel/Result/test",
     "log_dir": "/home/dutel/Log/test",
+    "cellranger_version": "cellranger-7.1.0",
     "cpu_limit": 8,
     "memory_limit": 32
 }
