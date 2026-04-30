@@ -116,7 +116,7 @@ process CELLRANGER_MKFASTQ {
         log_start "Running cellranger mkfastq for run_id = ${run_id}..."
 
         # See if run_ID is FlowCellID HCHNTDMX2 or CelineID 260323_A01789_0447_AHCHNTDMX2 (I think FlowCellID HCHNTDMX2 is better)
-        /labos/UGM/dev/cellranger-7.1.0/bin/cellranger mkfastq \\
+        /labos/UGM/dev/${params.cellranger_version}/bin/cellranger mkfastq \\
             --run="${bcl_dir}" \\
             --id="${run_id}" \\
             --csv="${preprocessed_sample_sheet}" \\
@@ -184,7 +184,7 @@ process CELLRANGER_MKFASTQ {
     # Create minimal versions file
     cat > 2_cellranger_mkfastq_versions.yml <<EOF
 "CELLRANGER_MKFASTQ":
-    "cellranger": "7.1.0"
+    "cellranger": "${params.cellranger_version}"
     "run_id": "${run_id}"
 EOF
     """

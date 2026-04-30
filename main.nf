@@ -54,6 +54,7 @@ def printHeader() {
     ║  cpu/memory_limit         : ${params.cpu_limit} / ${params.memory_limit}GB
     ║  pipeline_version         : ${params.pipeline_version}
     ║  min_nextflow_version     : ${params.min_nextflow_version}
+    ║  cellranger_version       : ${params.cellranger_version}
     ╚════════════════════════════════════════════════════════════════════════════╝
     """.stripIndent()
 }
@@ -346,6 +347,16 @@ def validateParams() {
         }
     }
 
+    if (!params.cellranger_version) {
+        params.cellranger_version = 'cellranger-7.1.0'
+        log.warn "[WARNING]: ⚠️ The --cellranger_version parameter is not specified. Default Cell Ranger version will be set to: ${params.cellranger_version}"
+    } else {
+        // Validate that the specified Cell Ranger version is one of the allowed values
+        if (!(params.cellranger_version in ["cellranger-7.1.0", "cellranger-9.0.1"])) {
+            error "[ERROR]: ❌ The --cellranger_version parameter must be cellranger-7.1.0 or cellranger-9.0.1. Invalid value: ${params.cellranger_version}"
+        }
+    }
+
     // Log the successful completion of parameter validation
     log.info "[INFO]: ✅ Parameter validation passed."
 }
@@ -358,6 +369,9 @@ workflow {
     // -----------------------------------------------------------------------
     // Initialization and logging
     // -----------------------------------------------------------------------
+    // Print the date and time when the workflow starts
+    log.info "[INFO]: 🚀🚀🚀 Starting CellRanger_Flow workflow at ${params.today_date} with run_id ${params.run_id}..."
+
     // Print header and validate parameters at the start of the workflow
     printHeader()
 

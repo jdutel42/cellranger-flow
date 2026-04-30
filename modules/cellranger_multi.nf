@@ -152,7 +152,7 @@ EOF
         
         log_start "Running Cell Ranger multi for run_id ${run_id} & batch_id ${batch_id}..."
         
-        /labos/UGM/dev/cellranger-7.1.0/bin/cellranger multi \
+        /labos/UGM/dev/${params.cellranger_version}/bin/cellranger multi \
             --id="${batch_id}" \
             --csv="config_sample_${batch_id}.csv" \
             --localcores=${params.cpu_limit} \
@@ -239,7 +239,7 @@ EOF
     # Create minimal versions file
     cat > 3_cellranger_multi_versions.yml <<EOF
 "CELLRANGER_MULTI":
-    "cellranger": "7.1.0"
+    "cellranger": "${params.cellranger_version}"
     "batch_id": "${batch_id}"
 EOF
     """
