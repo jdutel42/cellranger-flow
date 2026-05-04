@@ -43,8 +43,8 @@ def printHeader() {
     ║  bcl_dir                  : ${params.bcl_dir}
     ║  protocol_prefix          : ${params.protocol_prefix}
     ║  batch_ids                : ${params.batch_ids}
-    ║  ref_gex                  : ${params.path_ref_gex}
-    ║  ref_vdj                  : ${params.path_ref_vdj}
+    ║  genome_reference_path    : ${params.genome_reference_path}
+    ║  vdj_reference_path       : ${params.vdj_reference_path}
     ║  output_dir               : ${params.output_dir}
     ║  preprocessing_output_dir : ${params.preprocessing_output_dir}
     ║  qc_output_dir            : ${params.qc_output_dir}
@@ -142,30 +142,30 @@ def validateParams() {
     }
 
     // Check genome (GEX) reference
-    if (!params.path_ref_gex) {
-        log.warn "[WARNING]: ⚠️ The --path_ref_gex parameter is not specified. Default GEX reference path will be set to: ${params.path_ref_gex}"
+    if (!params.genome_reference_path) {
+        log.warn "[WARNING]: ⚠️ The --genome_reference_path parameter is not specified. Default GEX reference path will be set to: ${params.genome_reference_path}"
     } else {
         // Validate that the GEX reference path exists and is a directory
-        def gex_ref_path = file(params.path_ref_gex)
+        def gex_ref_path = file(params.genome_reference_path)
         if (!gex_ref_path.exists()) {
-            error "[ERROR]: ❌ GEX reference path does not exist: ${params.path_ref_gex}"
+            error "[ERROR]: ❌ GEX reference path does not exist: ${params.genome_reference_path}"
         }
         if (!gex_ref_path.isDirectory()) {
-            error "[ERROR]: ❌ --path_ref_gex must be a directory, not a file: ${params.path_ref_gex}"
+            error "[ERROR]: ❌ --genome_reference_path must be a directory, not a file: ${params.genome_reference_path}"
         }
     }
 
     // Check VDJ reference
-    if (!params.path_ref_vdj) {
-        error "[ERROR]: ❌ The --path_ref_vdj parameter is required for the VDJ reference used in Cellranger Multi. Please provide the path to the VDJ reference, e.g., '/path/to/refdata-vdj-GRCh38-alts-ensembl-2020-A'."
+    if (!params.vdj_reference_path) {
+        error "[ERROR]: ❌ The --vdj_reference_path parameter is required for the VDJ reference used in Cellranger Multi. Please provide the path to the VDJ reference, e.g., '/path/to/refdata-vdj-GRCh38-alts-ensembl-2020-A'."
     } else {
         // Validate that the VDJ reference path exists and is a directory
-        def vdj_ref_path = file(params.path_ref_vdj)
+        def vdj_ref_path = file(params.vdj_reference_path)
         if (!vdj_ref_path.exists()) {
-            error "[ERROR]: ❌ VDJ reference path does not exist: ${params.path_ref_vdj}"
+            error "[ERROR]: ❌ VDJ reference path does not exist: ${params.vdj_reference_path}"
         }
         if (!vdj_ref_path.isDirectory()) {
-            error "[ERROR]: ❌ --path_ref_vdj must be a directory, not a file: ${params.path_ref_vdj}"
+            error "[ERROR]: ❌ --vdj_reference_path must be a directory, not a file: ${params.vdj_reference_path}"
         }
     }
 
@@ -439,8 +439,8 @@ workflow {
     CELLRANGER_MULTI(
         ch_multi_input, // Tuple input expected by module
         ch_fastqs, // Pass the channel of FASTQ directories generated from the previous step
-        file(params.path_ref_gex, checkIfExists: true), // GEX reference from params
-        file(params.path_ref_vdj, checkIfExists: true), // VDJ reference from params
+        params.genome_reference_path, // GEX reference from params
+        params.vdj_reference_path, // VDJ reference from params
         params.alignment_output_dir, // Pass output directory for Cellranger Multi results
         params.alignment_log_dir, // Pass log directory for Cellranger Multi
         params.today_date // Pass today's date for logging and output naming

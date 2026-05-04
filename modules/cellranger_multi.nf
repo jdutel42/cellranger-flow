@@ -10,8 +10,8 @@
 ----------------------------------------------------------------------------------------
     Inputs :
         tuple val(run_id), val(batch)                       → run identifier + batch name
-        path(ref_gex)                                       → GEX reference
-        path(ref_vdj)                                       → VDJ reference
+        path(genome_reference_path)                         → GEX reference
+        path(vdj_reference_path)                            → VDJ reference
         val(path_fastq)                                     → FASTQ base directory
         val(fastq_folder_gex)                               → GEX FASTQ subfolder
         val(fastq_folder_vdj)                               → VDJ FASTQ subfolder
@@ -50,8 +50,8 @@ process CELLRANGER_MULTI {
     input:
         tuple val(run_id), val(batch_id)
         path fastq_folder
-        path ref_gex
-        path ref_vdj
+        path genome_reference_path
+        path vdj_reference_path
         val alignment_output_dir // Output directory for Cellranger Multi results (val because it's STRING path)
         val alignment_log_dir // Log directory for Cellranger Multi logs (val because it's STRING)
         val today_date // Today's date for logging and output naming
@@ -86,8 +86,8 @@ process CELLRANGER_MULTI {
         ║ - run_id: ${run_id}
         ║ - batch_id: ${batch_id}
         ║ - fastq_folder: ${fastq_folder}
-        ║ - ref_gex: ${ref_gex}
-        ║ - ref_vdj: ${ref_vdj}
+        ║ - genome_reference_path: ${genome_reference_path}
+        ║ - vdj_reference_path: ${vdj_reference_path}
         ║ - cpus: ${params.cpu_limit}
         ║ - mem_gb: ${params.memory_limit}
         ║ - alignment_output_dir: ${alignment_output_dir}
@@ -129,12 +129,12 @@ process CELLRANGER_MULTI {
         
         cat > "config_sample_${batch_id}.csv" <<EOF
 [gene-expression]
-ref,${ref_gex}
+ref,${genome_reference_path}
 no-bam,FALSE
 no-secondary,FALSE
 
 [vdj]
-ref,${ref_vdj}
+ref,${vdj_reference_path}
 
 [libraries]
 fastq_id,fastqs,lanes,physical_library_id,feature_types,subsample_rate
