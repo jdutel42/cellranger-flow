@@ -49,9 +49,9 @@ process CELLRANGER_MULTI {
 
     input:
         tuple val(run_id), val(batch_id)
-        path fastq_folder
-        path genome_reference_path
-        path vdj_reference_path
+        val fastq_folder
+        val genome_reference_path
+        val vdj_reference_path
         val alignment_output_dir // Output directory for Cellranger Multi results (val because it's STRING path)
         val alignment_log_dir // Log directory for Cellranger Multi logs (val because it's STRING)
         val today_date // Today's date for logging and output naming
