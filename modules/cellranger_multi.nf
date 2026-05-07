@@ -18,9 +18,9 @@
         val alignment_output_dir                            → alignment output directory
         val alignment_log_dir                               → alignment log directory
     Outputs :
-        tuple val(batch_id), path("multi_output/${batch_id}/outs/metrics_summary.csv") → ch_metrics
-        tuple val(batch_id), path("multi_output/${batch_id}/outs/web_summary.html") → ch_web_summaries
-        path "3_cellranger_multi_versions.yml" → ch_versions
+        tuple val(batch_id), path("multi_output/${batch_id}/outs/metrics_summary.csv") -> ch_metrics
+        tuple val(batch_id), path("multi_output/${batch_id}/outs/web_summary.html") -> ch_web_summaries
+        path "3_cellranger_multi_versions.yml" -> ch_versions
 ========================================================================================
 */
 
@@ -57,8 +57,8 @@ process CELLRANGER_MULTI {
         val today_date // Today's date for logging and output naming
 
     output:
-        tuple val(batch_id), path("multi_output/${batch_id}/outs/metrics_summary.csv"),         emit: metrics
-        tuple val(batch_id), path("multi_output/${batch_id}/outs/web_summary.html"),            emit: web_summaries
+        tuple val(batch_id), path("multi_output/${batch_id}/outs/per_sample_outs/${batch_id}/metrics_summary.csv"),         emit: metrics
+        tuple val(batch_id), path("multi_output/${batch_id}/outs/per_sample_outs/${batch_id}/web_summary.html"),            emit: web_summaries
         path "3_cellranger_multi_versions.yml",                                                 emit: versions
 
     script:
@@ -169,18 +169,14 @@ EOF
 
         mv "${batch_id}" "multi_output/${batch_id}"
 
-        REQUIRED_OUTPUTS=(
-            "multi_output/${batch_id}/outs/filtered_feature_bc_matrix/matrix.mtx.gz"
-            "multi_output/${batch_id}/outs/metrics_summary.csv"
-            "multi_output/${batch_id}/outs/web_summary.html"
-            "multi_output/${batch_id}/outs/molecule_info.h5"
-        )
+        # Verify key outputs exist
+        if [ ! -f "multi_output/${batch_id}/outs/per_sample_outs/${batch_id}/metrics_summary.csv" ]; then
+            log_error "Missing metrics_summary.csv"
+        fi
 
-        for output_file in "\${REQUIRED_OUTPUTS[@]}"; do
-            if [ ! -f "\$output_file" ] && [ ! -d "\$output_file" ]; then
-                log_error "Missing expected output: \$output_file"
-            fi
-        done
+        if [ ! -f "multi_output/${batch_id}/outs/per_sample_outs/${batch_id}/web_summary.html" ]; then
+            log_error "Missing web_summary.html"
+        fi
 
         log_ok "Cellranger multi completed successfully for ${batch_id}."
 

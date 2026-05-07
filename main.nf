@@ -466,6 +466,7 @@ workflow {
     // Run MULTIQC module
     MULTIQC(
         ch_qc_files.collect(), // Pass the channel of QC files collected (metrics summaries and web summaries) generated from Cellranger Multi
+        ch_fastqs.collect(), // Pass the channel of FASTQ directories generated from the previous step for MultiQC to link raw data in the report
         params.run_id, // Pass run_id for logging and output naming
         params.multiqc_output_dir, // Pass output directory for MultiQC results
         params.multiqc_log_dir, // Pass log directory for MultiQC logs

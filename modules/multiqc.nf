@@ -21,8 +21,8 @@ process MULTIQC {
     tag "MQC_${run_id}" // Log the run ID for traceability for "MQC" = "MultiQC"
     label 'process_high' // Label for resource allocation
 
-    // Use container for reproducibility
-    container 'quay.io/biocontainers/multiqc:1.21--pyhdfd78af_0'
+    // Use the shared conda environment available on the cluster
+    conda '/labos/UGM/dev/envs/shared/multiqc'
 
     // Publish MultiQC report and data to specified output directories
     publishDir (
@@ -40,7 +40,8 @@ process MULTIQC {
     )
 
     input:
-        path qc_files   // Collection of all QC files (metrics_summary.csv, web_summary.html, logs)
+        val qc_files   // Collection of all QC files (metrics_summary.csv, web_summary.html, logs)
+        val fastqs     // Collection of all FASTQ files
         val run_id      // Run identifier for logging and output naming
         val multiqc_output_dir // Output directory for MultiQC results (val because it's STRING path)
         val multiqc_log_dir // Log directory for MultiQC logs (val because it's STRING path)
@@ -75,6 +76,7 @@ process MULTIQC {
         ║ Logging input parameters:
         ║ - run_id: ${run_id}
         ║ - qc_files: ${qc_files}
+        ║ - fastqs: ${fastqs}
         ║ - cpus: ${params.cpu_limit}
         ║ - mem_gb: ${params.memory_limit}
         ║ - multiqc_output_dir: ${multiqc_output_dir}
@@ -90,11 +92,20 @@ process MULTIQC {
         log_verify "Verifying input files and directories..."
 
         log_info "Received QC files:"
-        ls -la ${qc_files}
+        ls -la ${qc_files.join(' ')}
+        ls -la ${fastqs.join(' ')}
 
-        if [ -z "\$(ls -A \"${qc_files}\")" ]; then
-            log_error "No QC files found in the input directory: ${qc_files}"
-        fi
+        for file in ${qc_files.join(' ')}; do
+            if [ ! -f "\$file" ]; then
+                log_error "QC file not found: \$file"
+            fi
+        done
+
+        for dir in ${fastqs.join(' ')}; do
+            if [ ! -d "\$dir" ]; then
+                log_error "FASTQ directory not found: \$dir"
+            fi
+        done
 
         log_ok "Input files and directories verified successfully."
 
@@ -104,16 +115,46 @@ process MULTIQC {
         
         log_start "Running MultiQC for run_id ${run_id}..."
         
+        # Create a temporary directory to hold the QC files for MultiQC to scan
+        mkdir -p work_qc
+
+        # Copy the parent directories / contents of the qc_files into per-batch subdirs
+        # This avoids nested absolute paths and ensures MultiQC sees files under work_qc/<batch>
+        for qc_file in ${qc_files.join(' ')}; do
+            qc_dir=\$(dirname "\$qc_file")
+            base=\$(basename "\$qc_dir")
+            mkdir -p "work_qc/\$base"
+            # copy contents of the qc dir into work_qc/<base> (preserve files, not leading absolute path)
+            cp -r "\$qc_dir"/. "work_qc/\$base/" || cp -r "\$qc_dir" "work_qc/\$base/"
+        done
+
+        for fastq_dir in ${fastqs.join(' ')}; do
+            base=\$(basename "\$fastq_dir")
+            mkdir -p "work_qc/\$base"
+            cp -r "\$fastq_dir"/. "work_qc/\$base/" || cp -r "\$fastq_dir" "work_qc/\$base/"
+        done
+
+        # Debug: list the gathered files so we can inspect what MultiQC will scan
+        echo "--- work_qc contents ---"
+        ls -lR work_qc || true
+
+        # Run MultiQC with the specified parameters
         multiqc \\
-            . \\
+            ./work_qc/* \\
             --title "MultiQC Report - ${run_id}" \\
             --filename "multiqc_report_${run_id}.html" \\
-            --data-dir-name "multiqc_data_${run_id}" \\
+            --data-dir \\
             --force \\
             --verbose \\
             --dirs \\
             --fullnames \\
             --outdir ./output_multiqc
+
+        # MultiQC v1.14 creates ./output_multiqc/multiqc_data; rename to keep run-specific outputs
+        if [ -d "./output_multiqc/multiqc_data" ]; then
+            mv "./output_multiqc/multiqc_data" "./output_multiqc/multiqc_data_${run_id}"
+        fi
+
 
         # -force: Force overwrite of existing output files
         # -verbose: Enable verbose logging for debugging
