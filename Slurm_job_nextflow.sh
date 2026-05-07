@@ -11,4 +11,4 @@ cd /labos/UGM/home/dutel/cellranger-flow
 module load devel/python/Miniconda3-py39_4.10.3
 source "$(conda info --base)/etc/profile.d/conda.sh"
 conda activate nextflow_env
-nextflow run main.nf -c assets/nextflow.config -params-file assets/params.json -profile slurm -work-dir ./work/44/992822658ce57c62eda5ca1a62bb25 -resume
+nextflow run main.nf -c assets/nextflow.config -params-file assets/params.json -profile slurm -resume
