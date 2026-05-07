@@ -49,7 +49,7 @@ process MULTIQC {
 
     output:
         path "output_multiqc/multiqc_report_${run_id}.html" // Output HTML report named with run_id for traceability
-        path "output_multiqc/multiqc_data_${run_id}/"
+        path "output_multiqc/multiqc_report_${run_id}_data/"
         path "4_multiqc_versions.yml", emit: versions
 
     script:
