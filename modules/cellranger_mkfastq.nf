@@ -17,7 +17,7 @@
 process CELLRANGER_MKFASTQ {
 
     // Tag and label for logging and resource allocation
-    tag "CrF_${run_id}" // Log the run ID for traceability for "CrF" = "Cell Ranger mkFastq"
+    tag "2_${run_id}_CellRanger_MKFASTQ_${params.protocol_prefix}" // Log the run ID for traceability for "CrF" = "Cell Ranger mkFastq"
     label 'process_high' // Use a high resource label since this step can be computationally intensive
 
     // Container specification for reproducibility

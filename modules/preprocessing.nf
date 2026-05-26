@@ -21,7 +21,7 @@ process PREPROCESSING {
     // Tag and label for logging and resource allocation
     // A task is 1 execution of 1 process for 1 set of inputs. for exemple, cellranger_multi with run_id = HCHNTDMX2 and batch_id = 74 is a task
     // A tag is useful to differentiate tasks of the same process (e.g. cellranger_multi) with different inputs (e.g. batch_id) and thus to have different log files and job names in SLURM. The tag is defined in the modules.
-    tag "Pro_${run_id}" // Log the name of the input sample sheet for "Pro" = "Processing sample-sheet"
+    tag "1_${run_id}_Preprocessing_${params.protocol_prefix}" // Log the name of the input sample sheet for "Pro" = "Processing sample-sheet"
     label 'process_high' // Use a high resource label since this is a lightweight step
 
     // Publish the standardized sample sheet to the output directory for reference
@@ -187,7 +187,8 @@ process PREPROCESSING {
     "${task.process}":
     awk: "\$(awk -W version 2>&1 | head -n1 | sed 's/\\t/ /g')"
     EOF
-        log_ok "Tool versions recorded successfully in 1_preprocessing_versions.yml"
+    
+    log_ok "Tool versions recorded successfully in 1_preprocessing_versions.yml"
 
     # -----------------------------------------------------------------------
     # End
