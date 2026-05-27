@@ -41,7 +41,7 @@ process CELLRANGER_MKFASTQ {
 
     // Declare process inputs
     input:
-        tuple val(run_id), path(bcl_dir), path(preprocessed_sample_sheet)
+        tuple val(run_id), val(bcl_dir), path(preprocessed_sample_sheet)
         val qc_output_dir // Output directory for FASTQ files (val because it's STRING path)
         val qc_log_dir // Log directory for QC logs
         val today_date // Today's date for logging and output naming
