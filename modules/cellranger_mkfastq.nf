@@ -25,11 +25,11 @@ process CELLRANGER_MKFASTQ {
     // Use conda environment for reproducibility
     conda '/labos/UGM/dev/envs/shared/178265b579c72c6695d48557d4eadac6_'
 
-    // Publish FASTQ files to the output directory for downstream analysis
+    // Publish the entire FASTQ output directory (all files and subdirs) to the QC output directory
     publishDir (
         path    : params.qc_output_dir, // Use the QC output directory for FASTQ outputs
         mode    : 'copy', // Copy files to the output directory
-        pattern : "fastq_output_${run_id}/**/*.fastq.gz", // Publish all files generated in work/fastq_output/ to qc_output_dir directory. ** is used to include all subdirectories (e.g., lane1, lane2) where FASTQ files are generated
+        pattern : "fastq_output_${run_id}/**" // Publish the full directory tree produced by cellranger mkfastq
     )
     
     // Publish logs to a dedicated directory

@@ -33,12 +33,11 @@ process CELLRANGER_MULTI {
     // Use conda environment for reproducibility
     conda '/labos/UGM/dev/envs/shared/178265b579c72c6695d48557d4eadac6_'
 
-    // Publish key outputs to output_dir
+    // Publish the full batch output tree to the alignment results directory
     publishDir (
         path    : params.alignment_output_dir, // Use the alignment output directory for Cellranger Multi results
         mode    : 'copy',
-        pattern : "multi_output/**",
-        saveAs  : { filename -> filename }
+        pattern : "multi_output/${batch_id}/**"
     )
     
     publishDir (
@@ -57,6 +56,7 @@ process CELLRANGER_MULTI {
         val today_date // Today's date for logging and output naming
 
     output:
+        tuple val(batch_id), path("multi_output/${batch_id}"),                                    emit: multi_output
         tuple val(batch_id), path("multi_output/${batch_id}/outs/per_sample_outs/${batch_id}/metrics_summary.csv"),         emit: metrics
         tuple val(batch_id), path("multi_output/${batch_id}/outs/per_sample_outs/${batch_id}/web_summary.html"),            emit: web_summaries
         path "3_cellranger_multi_versions.yml",                                                 emit: versions
