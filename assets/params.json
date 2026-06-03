@@ -8,6 +8,8 @@
     "vdj_reference_path": "/labos/UGM/dev/cellranger-pipe/refdata-cellranger-vdj-GRCh38-alts-ensembl-7.0.0",
     "output_dir": "/home/dutel/Result/260526_A01789_0491_AHG57GDMX2",
     "log_dir": "/home/dutel/Log/260526_A01789_0491_AHG57GDMX2",
+    "species": "human",
+    "genome_version": "hg38",
     "cellranger_version": "cellranger-7.1.0",
     "cpu_limit": 16,
     "memory_limit": 64

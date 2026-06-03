@@ -43,6 +43,8 @@ def printHeader() {
     ║  bcl_dir                  : ${params.bcl_dir}
     ║  protocol_prefix          : ${params.protocol_prefix}
     ║  batch_ids                : ${params.batch_ids}
+    ║  species                  : ${params.species}
+    ║  genome_version           : ${params.genome_version}
     ║  genome_reference_path    : ${params.genome_reference_path}
     ║  vdj_reference_path       : ${params.vdj_reference_path}
     ║  output_dir               : ${params.output_dir}
@@ -141,9 +143,49 @@ def validateParams() {
         }
     }
 
+    // Check species
+    if (!params.species) {
+        error "[ERROR]: ❌ The --species parameter is not specified. Please provide a valid species, either 'human' or 'mouse'."
+    } else {
+        // Validate that the specified species is one of the allowed values
+        if (!(params.species in ["human", "mouse"])) {
+            error "[ERROR]: ❌ The --species parameter must be either 'human' or 'mouse'. Invalid value: ${params.species}"
+        }
+    }
+    if (params.species == "human" && !params.genome_reference_path) {
+        log.warn "[WARNING]: ⚠️ The --genome_reference_path parameter is not specified. Default and latest human GEX reference path will be set to: ${params.genome_reference_path}"
+    }
+    if (params.species == "mouse" && !params.genome_reference_path) {
+        log.warn "[WARNING]: ⚠️ The --genome_reference_path parameter is not specified. Default mouse GEX reference path will be set to: ${params.genome_reference_path}"
+    }
+    
+
     // Check genome (GEX) reference
     if (!params.genome_reference_path) {
-        log.warn "[WARNING]: ⚠️ The --genome_reference_path parameter is not specified. Default GEX reference path will be set to: ${params.genome_reference_path}"
+        log.warn "[WARNING]: ⚠️ The --genome_reference_path parameter is not specified. Default GEX reference path will be set according to the specified species and genome version : ${params.species} ${params.genome_version}"
+        if (!params.species) {
+            error "[ERROR]: ❌ The --species parameter is required to set the default GEX reference path. Please provide a valid species, either 'human' or 'mouse'."
+        } else if (params.species == "human" || params.species == "Homo sapiens") {
+            if (!params.genome_version) {
+                error "[ERROR]: ❌ The --genome_version parameter is required for the human species. Please provide a valid genome version, e.g., 'hg38' or 'GRCh38'."
+            } else if (params.genome_version == "hg38" || params.genome_version == "GRCh38") {
+                params.genome_reference_path = "/labos/UGM/dev/cellranger-pipe/refdata-gex-GRCh38-2020-A"
+            } else if (params.genome_version == "hg19" || params.genome_version == "GRCh37") {
+                params.genome_reference_path = "/labos/UGM/dev/cellranger-pipe/refdata-gex-GRCh37-2020-A"
+            } else {
+                error "[ERROR]: ❌ Unsupported genome version for human species: ${params.genome_version}. Supported version is: GRCh38."
+            }
+        } else if (params.species == "mouse" || params.species == "mus_musculus") {
+            if (!params.genome_version) {
+                error "[ERROR]: ❌ The --genome_version parameter is required for the mouse species. Please provide a valid genome version, e.g., 'mm39' or 'GRCm39'."
+            } else if (params.genome_version == "mm39" || params.genome_version == "GRCm39") {
+                params.genome_reference_path = "/home/dutel/Data/Reference/Other/GEX/refdata-gex-GRCm39-2024-A"
+            } else {
+                error "[ERROR]: ❌ Unsupported genome version for mouse species: ${params.genome_version}. Supported version is: mm39."
+            }
+        } else {
+            error "[ERROR]: ❌ Unsupported species: ${params.species}. Supported species are: human and mouse."
+        }
     } else {
         // Validate that the GEX reference path exists and is a directory
         def gex_ref_path = file(params.genome_reference_path)
@@ -157,7 +199,30 @@ def validateParams() {
 
     // Check VDJ reference
     if (!params.vdj_reference_path) {
-        error "[ERROR]: ❌ The --vdj_reference_path parameter is required for the VDJ reference used in Cellranger Multi. Please provide the path to the VDJ reference, e.g., '/path/to/refdata-vdj-GRCh38-alts-ensembl-2020-A'."
+        log.warn "[WARNING]: ⚠️ The --vdj_reference_path parameter is not specified. Default VDJ reference path will be set according to the specified species and genome version : ${params.species} ${params.genome_version}"
+        if (!params.species) {
+            error "[ERROR]: ❌ The --species parameter is required to set the default VDJ reference path. Please provide a valid species, either 'human' or 'mouse'."
+        } else if (params.species == "human" || params.species == "Homo sapiens") {
+            if (!params.genome_version) {
+                error "[ERROR]: ❌ The --genome_version parameter is required for the human species. Please provide a valid genome version, e.g., 'hg38' or 'GRCh38'."
+            } else if (params.genome_version == "hg38" || params.genome_version == "GRCh38") {
+                params.vdj_reference_path = "/labos/UGM/dev/cellranger-pipe/refdata-cellranger-vdj-GRCh38-alts-ensembl-7.0.0"
+            } else if (params.genome_version == "hg19" || params.genome_version == "GRCh37") {
+                params.vdj_reference_path = "/labos/UGM/dev/cellranger-pipe/refdata-cellranger-vdj-GRCh37-alts-ensembl-2020-A"
+            } else {
+                error "[ERROR]: ❌ Unsupported genome version for human species: ${params.genome_version}. Supported version is: GRCh38."
+            }
+        } else if (params.species == "mouse" || params.species == "mus_musculus") {
+            if (!params.genome_version) {
+                error "[ERROR]: ❌ The --genome_version parameter is required for the mouse species. Please provide a valid genome version, e.g., 'mm39' or 'GRCm39'."
+            } else if (params.genome_version == "mm39" || params.genome_version == "GRCm39") {
+                params.vdj_reference_path = "/home/dutel/Data/Reference/Other/VDJ/refdata-vdj-GRCm39-2024-A"
+            } else {
+                error "[ERROR]: ❌ Unsupported genome version for mouse species: ${params.genome_version}. Supported version is: mm39."
+            }
+        } else {
+            error "[ERROR]: ❌ Unsupported species: ${params.species}. Supported species are: human and mouse."
+        }
     } else {
         // Validate that the VDJ reference path exists and is a directory
         def vdj_ref_path = file(params.vdj_reference_path)
