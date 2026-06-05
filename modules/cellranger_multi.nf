@@ -188,12 +188,12 @@ EOF
         
         log_start "Recording tool versions for reproducibility..."
         
-        cat <<-END_VERSIONS > 3_cellranger_multi_versions.yml
+        cat <<-END_VERSIONS > 3_cellranger_multi_versions_${batch_id}.yml
         "${task.process}":
             cellranger: \$(cellranger --version 2>&1 | grep -oP 'cellranger-\\K[0-9.]+')
         END_VERSIONS
 
-        log_ok "Tool versions recorded successfully in 3_cellranger_multi_versions.yml"
+        log_ok "Tool versions recorded successfully in 3_cellranger_multi_versions_${batch_id}.yml"
 
         # -----------------------------------------------------------------------
         # End
@@ -201,6 +201,7 @@ EOF
 
         log_save "Cellranger multi output fo run_id ${run_id} & batch_id ${batch_id} saved to ${alignment_output_dir}/multi_output/${batch_id}/."
         log_log "Versions information will be saved to ${params.run_traceability_log_dir}/${today_date}_versions.yaml"
+
         log_log "Logs saved to ${alignment_log_dir}/${today_date}_multi_${run_id}_${batch_id}.log"
 
         log_success "CellRanger multi process completed successfully for run_id = ${run_id} & batch_id = ${batch_id} and results are available at ${params.alignment_output_dir}!"
