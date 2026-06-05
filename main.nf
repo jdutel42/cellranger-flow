@@ -43,6 +43,8 @@ def printHeader() {
     ║  bcl_dir                  : ${params.bcl_dir}
     ║  protocol_prefix          : ${params.protocol_prefix}
     ║  batch_ids                : ${params.batch_ids}
+    ║  species                  : ${params.species}
+    ║  genome_version           : ${params.genome_version}
     ║  genome_reference_path    : ${params.genome_reference_path}
     ║  vdj_reference_path       : ${params.vdj_reference_path}
     ║  output_dir               : ${params.output_dir}
@@ -141,9 +143,49 @@ def validateParams() {
         }
     }
 
+    // Check species
+    if (!params.species) {
+        error "[ERROR]: ❌ The --species parameter is not specified. Please provide a valid species, either 'human' or 'mouse'."
+    } else {
+        // Validate that the specified species is one of the allowed values
+        if (!(params.species in ["human", "mouse"])) {
+            error "[ERROR]: ❌ The --species parameter must be either 'human' or 'mouse'. Invalid value: ${params.species}"
+        }
+    }
+    if (params.species == "human" && !params.genome_reference_path) {
+        log.warn "[WARNING]: ⚠️ The --genome_reference_path parameter is not specified. Default and latest human GEX reference path will be set to: ${params.genome_reference_path}"
+    }
+    if (params.species == "mouse" && !params.genome_reference_path) {
+        log.warn "[WARNING]: ⚠️ The --genome_reference_path parameter is not specified. Default mouse GEX reference path will be set to: ${params.genome_reference_path}"
+    }
+    
+
     // Check genome (GEX) reference
     if (!params.genome_reference_path) {
-        log.warn "[WARNING]: ⚠️ The --genome_reference_path parameter is not specified. Default GEX reference path will be set to: ${params.genome_reference_path}"
+        log.warn "[WARNING]: ⚠️ The --genome_reference_path parameter is not specified. Default GEX reference path will be set according to the specified species and genome version : ${params.species} ${params.genome_version}"
+        if (!params.species) {
+            error "[ERROR]: ❌ The --species parameter is required to set the default GEX reference path. Please provide a valid species, either 'human' or 'mouse'."
+        } else if (params.species == "human" || params.species == "Homo sapiens") {
+            if (!params.genome_version) {
+                error "[ERROR]: ❌ The --genome_version parameter is required for the human species. Please provide a valid genome version, e.g., 'hg38' or 'GRCh38'."
+            } else if (params.genome_version == "hg38" || params.genome_version == "GRCh38") {
+                params.genome_reference_path = "/labos/UGM/dev/cellranger-pipe/refdata-gex-GRCh38-2020-A"
+            } else if (params.genome_version == "hg19" || params.genome_version == "GRCh37") {
+                params.genome_reference_path = "/labos/UGM/dev/cellranger-pipe/refdata-gex-GRCh37-2020-A"
+            } else {
+                error "[ERROR]: ❌ Unsupported genome version for human species: ${params.genome_version}. Supported version is: GRCh38."
+            }
+        } else if (params.species == "mouse" || params.species == "mus_musculus") {
+            if (!params.genome_version) {
+                error "[ERROR]: ❌ The --genome_version parameter is required for the mouse species. Please provide a valid genome version, e.g., 'mm39' or 'GRCm39'."
+            } else if (params.genome_version == "mm39" || params.genome_version == "GRCm39") {
+                params.genome_reference_path = "/home/dutel/Data/Reference/Other/GEX/refdata-gex-GRCm39-2024-A"
+            } else {
+                error "[ERROR]: ❌ Unsupported genome version for mouse species: ${params.genome_version}. Supported version is: mm39."
+            }
+        } else {
+            error "[ERROR]: ❌ Unsupported species: ${params.species}. Supported species are: human and mouse."
+        }
     } else {
         // Validate that the GEX reference path exists and is a directory
         def gex_ref_path = file(params.genome_reference_path)
@@ -157,7 +199,30 @@ def validateParams() {
 
     // Check VDJ reference
     if (!params.vdj_reference_path) {
-        error "[ERROR]: ❌ The --vdj_reference_path parameter is required for the VDJ reference used in Cellranger Multi. Please provide the path to the VDJ reference, e.g., '/path/to/refdata-vdj-GRCh38-alts-ensembl-2020-A'."
+        log.warn "[WARNING]: ⚠️ The --vdj_reference_path parameter is not specified. Default VDJ reference path will be set according to the specified species and genome version : ${params.species} ${params.genome_version}"
+        if (!params.species) {
+            error "[ERROR]: ❌ The --species parameter is required to set the default VDJ reference path. Please provide a valid species, either 'human' or 'mouse'."
+        } else if (params.species == "human" || params.species == "Homo sapiens") {
+            if (!params.genome_version) {
+                error "[ERROR]: ❌ The --genome_version parameter is required for the human species. Please provide a valid genome version, e.g., 'hg38' or 'GRCh38'."
+            } else if (params.genome_version == "hg38" || params.genome_version == "GRCh38") {
+                params.vdj_reference_path = "/labos/UGM/dev/cellranger-pipe/refdata-cellranger-vdj-GRCh38-alts-ensembl-7.0.0"
+            } else if (params.genome_version == "hg19" || params.genome_version == "GRCh37") {
+                params.vdj_reference_path = "/labos/UGM/dev/cellranger-pipe/refdata-cellranger-vdj-GRCh37-alts-ensembl-2020-A"
+            } else {
+                error "[ERROR]: ❌ Unsupported genome version for human species: ${params.genome_version}. Supported version is: GRCh38."
+            }
+        } else if (params.species == "mouse" || params.species == "mus_musculus") {
+            if (!params.genome_version) {
+                error "[ERROR]: ❌ The --genome_version parameter is required for the mouse species. Please provide a valid genome version, e.g., 'mm39' or 'GRCm39'."
+            } else if (params.genome_version == "mm39" || params.genome_version == "GRCm39") {
+                params.vdj_reference_path = "/home/dutel/Data/Reference/Other/VDJ/refdata-vdj-GRCm39-2024-A"
+            } else {
+                error "[ERROR]: ❌ Unsupported genome version for mouse species: ${params.genome_version}. Supported version is: mm39."
+            }
+        } else {
+            error "[ERROR]: ❌ Unsupported species: ${params.species}. Supported species are: human and mouse."
+        }
     } else {
         // Validate that the VDJ reference path exists and is a directory
         def vdj_ref_path = file(params.vdj_reference_path)
@@ -361,6 +426,24 @@ def validateParams() {
     log.info "[INFO]: ✅ Parameter validation passed."
 }
 
+
+
+def shouldRun(String step) {
+    // return params.mode == "full" || params.mode == step // Condensed version
+    // OR
+    if (params.mode == "full") {
+        return true
+    } else if (params.mode == step) {
+        return true
+    } else {
+        return false
+    }
+}
+
+
+
+
+
 // ========================================================================================
 // MAIN WORKFLOW
 // ========================================================================================
@@ -387,105 +470,127 @@ workflow {
     // -----------------------------------------------------------------------
 
     // Run PREPROCESSING module
-    PREPROCESSING(
-        file(params.raw_sample_sheet_file_path, checkIfExists: true), // Access the raw sample sheet path from params
-        params.run_id, // Pass run_id for logging and output naming
-        params.preprocessing_output_dir, // Pass output directory for standardized sample sheet
-        params.preprocessing_log_dir, // Pass log directory for preprocessing logs
-        params.today_date // Pass today's date for logging and output naming
-    )
+    if (shouldRun("preprocessing")) {
+        PREPROCESSING(
+            file(params.raw_sample_sheet_file_path, checkIfExists: true), // Access the raw sample sheet path from params
+            params.run_id, // Pass run_id for logging and output naming
+            params.preprocessing_output_dir, // Pass output directory for standardized sample sheet
+            params.preprocessing_log_dir, // Pass log directory for preprocessing logs
+            params.today_date // Pass today's date for logging and output naming
+        )
 
-    // Capture outputs from PREPROCESSING
-    ch_preprocessed_sample_sheet = PREPROCESSING.out.preprocessed_sample_sheet // Capture channel for standardized sample sheet
-    ch_versions = ch_versions.mix(PREPROCESSING.out.versions) // Capture channel for versions information (mix for cumulation across steps)
+        // Capture outputs from PREPROCESSING
+        ch_preprocessed_sample_sheet = PREPROCESSING.out.preprocessed_sample_sheet // Capture channel for standardized sample sheet
+        ch_versions = ch_versions.mix(PREPROCESSING.out.versions) // Capture channel for versions information (mix for cumulation across steps)
+    } else {
+        ch_preprocessed_sample_sheet = channel.fromPath(params.preprocessed_sample_sheet_path)
+    }
 
     // -----------------------------------------------------------------------
     // STEP 2: Process BCL files to FASTQ according standardized sample sheet
     // -----------------------------------------------------------------------
 
-    // Build mkfastq tuple input: (run_id, bcl_dir, preprocessed_sample_sheet)
-    ch_mkfastq_input = ch_preprocessed_sample_sheet.map { preprocessed_sample_sheet ->
-        tuple(params.run_id, file(params.bcl_dir), preprocessed_sample_sheet)
+    if (shouldRun("mkfastq")) {
+        // Build mkfastq tuple input: (run_id, bcl_dir, preprocessed_sample_sheet)
+        ch_mkfastq_input = ch_preprocessed_sample_sheet.map { preprocessed_sample_sheet ->
+            tuple(params.run_id, file(params.bcl_dir), preprocessed_sample_sheet)
+        }
+
+        // Run CELLRANGER_MKFASTQ module
+        CELLRANGER_MKFASTQ(
+            ch_mkfastq_input, // Tuple input expected by module
+            params.qc_output_dir, // Pass output directory for FASTQ files
+            params.qc_log_dir, // Pass log directory for QC logs
+            params.today_date // Pass today's date for logging and output naming
+        )
+
+        // Capture outputs from CELLRANGER_MKFASTQ
+        ch_fastqs = CELLRANGER_MKFASTQ.out.fastqs // Capture channel for generated FASTQ files
+        ch_versions = ch_versions.mix(CELLRANGER_MKFASTQ.out.versions) // Capture channel for versions information (mix for cumulation across steps)
+    } else {
+        ch_fastqs = channel.fromPath(params.fastqs_dir_path)
     }
 
-    // Run CELLRANGER_MKFASTQ module
-    CELLRANGER_MKFASTQ(
-        ch_mkfastq_input, // Tuple input expected by module
-        params.qc_output_dir, // Pass output directory for FASTQ files
-        params.qc_log_dir, // Pass log directory for QC logs
-        params.today_date // Pass today's date for logging and output naming
-    )
-
-    // Capture outputs from CELLRANGER_MKFASTQ
-    ch_fastqs = CELLRANGER_MKFASTQ.out.fastqs // Capture channel for generated FASTQ files
-    ch_versions = ch_versions.mix(CELLRANGER_MKFASTQ.out.versions) // Capture channel for versions information (mix for cumulation across steps)
-    
     // -----------------------------------------------------------------------
     // STEP 3: Perform Alignment with Cellranger Multi
     // -----------------------------------------------------------------------
 
-    // Convert the comma-separated batch IDs string into a list of batch id
-    batch_ids_list = params.batch_ids.toString().split(',') // Split the comma-separated batch IDs into a list of batch_id
+    if (shouldRun("multi")) {
+        // Convert the comma-separated batch IDs string into a list of batch id
+        batch_ids_list = params.batch_ids.toString().split(',') // Split the comma-separated batch IDs into a list of batch_id
 
-    // Create a channel with several elements (batch_id), each will be pass to a separate instance of CELLRANGER_MULTI, enabling parallel alignment across all requested batches.
-    ch_batch_id = channel
-        .from(batch_ids_list) // From the list of batch IDs
-        .map { batch_id -> "${params.protocol_prefix}_batch${batch_id}" } // Map each batch_id in batch_ids_list to a full_batch_name
+        // Create a channel with several elements (batch_id), each will be pass to a separate instance of CELLRANGER_MULTI, enabling parallel alignment across all requested batches.
+        ch_batch_id = channel
+            .from(batch_ids_list) // From the list of batch IDs
+            .map { batch_id -> "${params.protocol_prefix}_batch${batch_id}" } // Map each batch_id in batch_ids_list to a full_batch_name
 
-    // Build multi tuple input: (run_id, batch_id)
-    ch_multi_input = ch_batch_id.map { batch_id -> tuple(params.run_id, batch_id) }
-    
-    // Run CELLRANGER_MULTI module
-    CELLRANGER_MULTI(
-        ch_multi_input, // Tuple input expected by module
-        ch_fastqs, // Pass the channel of FASTQ directories generated from the previous step
-        params.genome_reference_path, // GEX reference from params
-        params.vdj_reference_path, // VDJ reference from params
-        params.alignment_output_dir, // Pass output directory for Cellranger Multi results
-        params.alignment_log_dir, // Pass log directory for Cellranger Multi
-        params.today_date // Pass today's date for logging and output naming
-    )
+        // Build multi tuple input: (run_id, batch_id)
+        ch_multi_input = ch_batch_id.map { batch_id -> tuple(params.run_id, batch_id) }
+        
+        // Run CELLRANGER_MULTI module
+        CELLRANGER_MULTI(
+            ch_multi_input, // Tuple input expected by module
+            ch_fastqs, // Pass the channel of FASTQ directories generated from the previous step
+            params.genome_reference_path, // GEX reference from params
+            params.vdj_reference_path, // VDJ reference from params
+            params.alignment_output_dir, // Pass output directory for Cellranger Multi results
+            params.alignment_log_dir, // Pass log directory for Cellranger Multi
+            params.today_date // Pass today's date for logging and output naming
+        )
 
-    // Capture outputs from CELLRANGER_MULTI
-    ch_metrics = CELLRANGER_MULTI.out.metrics // Capture channel for metrics summary
-    ch_web_summaries = CELLRANGER_MULTI.out.web_summaries // Capture channel for web summaries
-    ch_versions = ch_versions.mix(CELLRANGER_MULTI.out.versions) // Capture channel for versions information (mix for cumulation across steps)
-
+        // Capture outputs from CELLRANGER_MULTI
+        ch_metrics = CELLRANGER_MULTI.out.metrics // Capture channel for metrics summary
+        ch_web_summaries = CELLRANGER_MULTI.out.web_summaries // Capture channel for web summaries
+        ch_versions = ch_versions.mix(CELLRANGER_MULTI.out.versions) // Capture channel for versions information (mix for cumulation across steps)
+    } else {
+        ch_metrics = channel.fromPath(params.metrics_dir_path)
+        ch_web_summaries = channel.fromPath(params.web_summaries_dir_path)
+    }
     // -----------------------------------------------------------------------
     // STEP 4: MultiQC report generation
     // -----------------------------------------------------------------------
 
-    // Combine metrics summaries and web summaries into a single channel for MultiQC input
-    ch_qc_files = 
-        ch_metrics.map { _batch_id, f -> f } // In ch_metrics (that is a tuple(batch_id, metrics_file_path)), extract the file path (f) for each batch_id and create a channel of metrics summary files
-        .mix(ch_web_summaries.map { _batch_id, f -> f }) 
-        // In ch_web_summaries (that is a tuple(batch_id, web_summary_file_path)), 
-        // extract the file path (f) for each batch_id and create a channel of web summary files 
-        // ==> then mix it with the channel of metrics summary files to create a single channel of QC files for MultiQC input, containing both metrics summaries and web summaries from all batches
+    if (shouldRun("multiqc")) {
+        // Combine metrics summaries and web summaries into a single channel for MultiQC input
+        ch_qc_files = 
+            ch_metrics.map { _batch_id, f -> f } // In ch_metrics (that is a tuple(batch_id, metrics_file_path)), extract the file path (f) for each batch_id and create a channel of metrics summary files
+            .mix(ch_web_summaries.map { _batch_id, f -> f }) 
+            // In ch_web_summaries (that is a tuple(batch_id, web_summary_file_path)), 
+            // extract the file path (f) for each batch_id and create a channel of web summary files 
+            // ==> then mix it with the channel of metrics summary files to create a single channel of QC files for MultiQC input, containing both metrics summaries and web summaries from all batches
 
-    // Run MULTIQC module
-    MULTIQC(
-        ch_qc_files.collect(), // Pass the channel of QC files collected (metrics summaries and web summaries) generated from Cellranger Multi
-        ch_fastqs.collect(), // Pass the channel of FASTQ directories generated from the previous step for MultiQC to link raw data in the report
-        params.run_id, // Pass run_id for logging and output naming
-        params.multiqc_output_dir, // Pass output directory for MultiQC results
-        params.multiqc_log_dir, // Pass log directory for MultiQC logs
-        params.today_date // Pass today's date for logging and output naming
-    )
+        // Run MULTIQC module
+        MULTIQC(
+            ch_qc_files.collect(), // Pass the channel of QC files collected (metrics summaries and web summaries) generated from Cellranger Multi
+            ch_fastqs.collect(), // Pass the channel of FASTQ directories generated from the previous step for MultiQC to link raw data in the report
+            params.run_id, // Pass run_id for logging and output naming
+            params.multiqc_output_dir, // Pass output directory for MultiQC results
+            params.multiqc_log_dir, // Pass log directory for MultiQC logs
+            params.today_date // Pass today's date for logging and output naming
+        )
 
-    ch_versions = ch_versions.mix(MULTIQC.out.versions)
+        ch_versions = ch_versions.mix(MULTIQC.out.versions)
+    } else {
+        // If MultiQC step is skipped, we can still capture the versions information from previous steps
+        ch_versions = ch_versions.mix(channel.fromPath(params.versions_dir_path))
+    }
 
     // -----------------------------------------------------------------------
     // STEP 5: Merge versions
     // -----------------------------------------------------------------------
 
-    // Merge all per-module versions.yml files into one dated versions file
-    MERGE_VERSIONS(
-        params.run_id, // Pass run_id for logging and output naming
-        ch_versions.collect(),
-        params.run_traceability_log_dir, // Pass log directory for traceability logs (merged versions.yml)
-        params.today_date
-    )
+    if (shouldRun("merge_versions")) {
+        // Merge all per-module versions.yml files into one dated versions file
+        MERGE_VERSIONS(
+            params.run_id, // Pass run_id for logging and output naming
+            ch_versions.collect(),
+            params.run_traceability_log_dir, // Pass log directory for traceability logs (merged versions.yml)
+            params.today_date
+        )
+    } else {
+        // If merge versions step is skipped, we can still capture the versions information from previous steps
+        ch_versions = ch_versions.mix(channel.fromPath(params.versions_dir_path))
+    }
 
     // -----------------------------------------------------------------------
     // Finishing workflow and logging
@@ -514,5 +619,4 @@ workflow {
     workflow.onError {
         log.error "[ERROR]: ❌ Pipeline failed. Check .nextflow.log for details."
     } 
-
 }
