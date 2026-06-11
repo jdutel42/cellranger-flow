@@ -135,14 +135,14 @@ process CELLRANGER_MKFASTQ {
             log_error "Cellranger mkfastq did not generate the expected output directory: fastq_output_${run_id}/" >&2
         fi
 
-        # Commented because fastq are sometimes generated but verification is too soon and it fails
+        # Commenting out because error message 
         #if ! find "fastq_output_${run_id}" -name "*.fastq.gz" | grep -q .; then
         #    log_error "No FASTQ files were generated in fastq_output_${run_id}/" >&2
         #fi
 
         log_ok "Verified cellranger mkfastq output successfully"
 
-        log_save "Cellranger mkfastq completed successfully for run_id = ${run_id} with \$FASTQ_COUNT FASTQ files generated in ${qc_output_dir}/fastq_output_${run_id}/"
+        log_save "Cellranger mkfastq completed successfully for run_id = ${run_id} with FASTQ files generated in ${qc_output_dir}/fastq_output_${run_id}/"
 
         # -----------------------------------------------------------------------
         # Record tool version
