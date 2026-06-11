@@ -21,7 +21,7 @@ process PREPROCESSING {
     // Tag and label for logging and resource allocation
     // A task is 1 execution of 1 process for 1 set of inputs. for exemple, cellranger_multi with run_id = HCHNTDMX2 and batch_id = 74 is a task
     // A tag is useful to differentiate tasks of the same process (e.g. cellranger_multi) with different inputs (e.g. batch_id) and thus to have different log files and job names in SLURM. The tag is defined in the modules.
-    tag "1_${run_id}_Preprocessing_${params.protocol_prefix}" // Log the name of the input sample sheet for "Pro" = "Processing sample-sheet"
+    tag "Prep_${run_id}_Preprocessing_samplesheet" // Log the name of the input sample sheet for "Pro" = "Processing sample-sheet"
     label 'process_high' // Use a high resource label since this is a lightweight step
 
     // Publish the standardized sample sheet to the output directory for reference
@@ -42,6 +42,7 @@ process PREPROCESSING {
     // Declare process inputs
     input:
     path raw_sample_sheet_file_path // raw_sample_sheet.csv path define in the main.nf file defined in the command line
+    val bcl_id // bcl_id from params to use in logging and output naming
     val run_id // run_id from params to use in logging and output naming
     val preprocessing_output_dir // Output directory for standardized sample sheet
     val preprocessing_log_dir // Log directory for preprocessing logs
@@ -58,24 +59,25 @@ process PREPROCESSING {
     # Exit on error (set -e), undefined variable (set -u), or error in pipeline (set -o pipefail)
     set -euo pipefail
 
-    # Create logs directory if it doesn't exist
+    # Create logs directory in work/
     mkdir -p logs
 
     # Redirect all log (stdout and stderr) to a log file for this process
-    exec > >(tee logs/${today_date}_preprocessing_${run_id}.log) 2>&1
+    exec > >(tee logs/${today_date}_preprocessing_${bcl_id}.log) 2>&1
 
     # Load shared logging helpers
     source "${params.logging_script}"
 
     log_init "Step 1: Preprocessing sample sheet = ${raw_sample_sheet_file_path}..."
 
-    log_log "Logs will be saved to ${preprocessing_log_dir}/${today_date}_preprocessing_${run_id}.log"
+    log_log "Logs will be saved to ${preprocessing_log_dir}/${today_date}_preprocessing_${bcl_id}.log"
 
     log_info "
     ╔═══════════════════════════════════════════════════════════════════════════════╗
     ║                         Preprocessing Process Script                          ║
     ╠═══════════════════════════════════════════════════════════════════════════════╣
     ║ Logging input parameters:
+    ║ - bcl_id: ${bcl_id}
     ║ - run_id: ${run_id}
     ║ - raw_sample_sheet: ${raw_sample_sheet_file_path}
     ║ - cpus: ${params.cpu_limit}
@@ -172,11 +174,11 @@ process PREPROCESSING {
     fi
 
     # Rename the processed sheet to the final output name
-    mv "\${TEMP_SHEET}.tmp" Index_mkfastq_${run_id}.csv
+    mv "\${TEMP_SHEET}.tmp" Index_mkfastq_${bcl_id}.csv
 
     log_ok "Processed columns and cleaned up sample sheet."
     
-    log_save "Output saved to Index_mkfastq_${run_id}.csv"
+    log_save "Output saved to Index_mkfastq_${bcl_id}.csv"
 
     # -----------------------------------------------------------------------
     # Record tool version
@@ -194,11 +196,11 @@ process PREPROCESSING {
     # End
     # -----------------------------------------------------------------------
     
-    log_save "Preprocessed sample sheet for run_id ${run_id} saved to ${preprocessing_output_dir}/Index_mkfastq_${run_id}.csv."
-    log_log "Versions information will be saved to ${params.run_traceability_log_dir}/${today_date}_versions.yaml"
-    log_log "Logs saved to ${preprocessing_log_dir}/${today_date}_preprocessing_${run_id}.log"
+    log_save "Preprocessed sample sheet for bcl_id ${bcl_id} saved to ${preprocessing_output_dir}/Index_mkfastq_${bcl_id}.csv."
+    log_log "Versions information will be saved to ${params.run_traceability_log_dir}/${today_date}_versions_${bcl_id}.yaml"
+    log_log "Logs saved to ${preprocessing_log_dir}/${today_date}_preprocessing_${bcl_id}.log"
 
-    log_success "Preprocessing of sample sheet completed successfully : ${preprocessing_output_dir}/Index_mkfastq_${run_id}.csv !"
+    log_success "Preprocessing of sample sheet completed successfully : ${preprocessing_output_dir}/Index_mkfastq_${bcl_id}.csv !"
     """
 
     stub:
@@ -206,13 +208,13 @@ process PREPROCESSING {
         mkdir -p logs
         
         # Create minimal CSV stub with headers
-        echo "Sample,Index" > Index_mkfastq_${run_id}.csv
-        echo "test_sample,AAAAAA" >> Index_mkfastq_${run_id}.csv
+        echo "Sample,Index" > Index_mkfastq_${bcl_id}.csv
+        echo "test_sample,AAAAAA" >> Index_mkfastq_${bcl_id}.csv
         
         # Create minimal versions file
         cat > 1_preprocessing_versions.yml <<EOF
 "PREPROCESSING":
-        "run_id": "${run_id}"
+        "bcl_id": "${bcl_id}"
         "timestamp": "${today_date}"
 EOF
     """

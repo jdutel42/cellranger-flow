@@ -27,7 +27,7 @@ include { MERGE_VERSIONS      } from './modules/merge_versions.nf'
 // IMPORTS SUB-WORKFLOWS
 // ========================================================================================
 
-// (No sub-workflows in this version, but this section is reserved for future additions if needed)
+include { GEX_VDJ_subworkflow } from './subworkflows/GEX_VDJ_subworkflow.nf'
 
 // ========================================================================================
 // DISPLAY INITIAL LOGGING
@@ -533,6 +533,8 @@ workflow {
             ch_fastqs, // Pass the channel of FASTQ directories generated from the previous step
             params.genome_reference_path, // GEX reference from params
             params.vdj_reference_path, // VDJ reference from params
+            params.adt_reference_path, // ADT reference from params (optional)
+            params.adt_samples_hashtags ?: [:], // ADT samples hashtag mappings from params (optional, defaults to empty map)
             params.alignment_output_dir, // Pass output directory for Cellranger Multi results
             params.alignment_log_dir, // Pass log directory for Cellranger Multi
             params.today_date // Pass today's date for logging and output naming

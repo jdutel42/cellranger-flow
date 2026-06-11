@@ -51,6 +51,8 @@ process CELLRANGER_MULTI {
         val fastq_folder
         val genome_reference_path
         val vdj_reference_path
+        val adt_reference_path
+        val adt_samples_hashtags // Map of sample_id -> hashtag_ids for ADT (feature barcoding)
         val alignment_output_dir // Output directory for Cellranger Multi results (val because it's STRING path)
         val alignment_log_dir // Log directory for Cellranger Multi logs (val because it's STRING)
         val today_date // Today's date for logging and output naming
@@ -126,24 +128,75 @@ process CELLRANGER_MULTI {
         # -------------------------------------------------------------------------
         
         log_start "Creating Cell Ranger multi config CSV for run_id ${run_id} & batch_id ${batch_id}..."
-        
-        cat > "config_sample_${batch_id}.csv" <<EOF
+
+        # Control flags from params: default to true for backward compatibility
+        INCLUDE_GEX=${params.gex ?: true}
+        INCLUDE_VDJ=${params.vdj ?: true}
+        INCLUDE_ADT=${params.adt ?: false}
+
+        # Initialize FASTQ dir vars (by default use the provided fastq_folder)
+        FASTQ_GEX_DIR="${fastq_folder}"
+        FASTQ_VDJ_DIR="${fastq_folder}"
+        FASTQ_ADT_DIR="${fastq_folder}"
+
+        # Build the config file incrementally depending on requested libraries
+        > "config_sample_${batch_id}.csv"
+
+        if [ "${INCLUDE_GEX}" = "true" ] || [ "${INCLUDE_GEX}" = "1" ]; then
+            cat >> "config_sample_${batch_id}.csv" <<EOF
 [gene-expression]
 ref,${genome_reference_path}
 no-bam,FALSE
 no-secondary,FALSE
+EOF
+        fi
 
+        if [ "${INCLUDE_VDJ}" = "true" ] || [ "${INCLUDE_VDJ}" = "1" ]; then
+            cat >> "config_sample_${batch_id}.csv" <<EOF
 [vdj]
 ref,${vdj_reference_path}
+EOF
+        fi
 
+        if [ "${INCLUDE_ADT}" = "true" ] || [ "${INCLUDE_ADT}" = "1" ]; then
+            cat >> "config_sample_${batch_id}.csv" <<EOF
+[feature]
+ref,${adt_reference_path}
+EOF
+        fi
+
+        # Libraries section: always present, but entries depend on enabled libraries
+        cat >> "config_sample_${batch_id}.csv" <<EOF
 [libraries]
 fastq_id,fastqs,lanes,physical_library_id,feature_types,subsample_rate
-${batch_id}_GEX,\$FASTQ_GEX_DIR,any,${batch_id}_GEX,Gene Expression,
-${batch_id}_VDJ,\$FASTQ_VDJ_DIR,any,${batch_id}_VDJ,VDJ,
 EOF
 
+        if [ "${INCLUDE_GEX}" = "true" ] || [ "${INCLUDE_GEX}" = "1" ]; then
+            echo "${batch_id}_GEX,\$FASTQ_GEX_DIR,any,${batch_id}_GEX,Gene Expression," >> "config_sample_${batch_id}.csv"
+        fi
+
+        if [ "${INCLUDE_VDJ}" = "true" ] || [ "${INCLUDE_VDJ}" = "1" ]; then
+            echo "${batch_id}_VDJ,\$FASTQ_VDJ_DIR,any,${batch_id}_VDJ,VDJ," >> "config_sample_${batch_id}.csv"
+        fi
+
+        if [ "${INCLUDE_ADT}" = "true" ] || [ "${INCLUDE_ADT}" = "1" ]; then
+            echo "${batch_id}_ADT,\$FASTQ_ADT_DIR,any,${batch_id}_ADT,Antibody Capture," >> "config_sample_${batch_id}.csv"
+        fi
+
+        # Add [samples] section with hashtag mappings if ADT is enabled
+        if [ "${INCLUDE_ADT}" = "true" ] || [ "${INCLUDE_ADT}" = "1" ]; then
+            if [ -n "${adt_samples_hashtags}" ] && [ "${adt_samples_hashtags}" != "{}" ]; then
+                cat >> "config_sample_${batch_id}.csv" <<EOF
+
+[samples]
+sample_id,hashtag_ids
+${adt_samples_hashtags && !adt_samples_hashtags.isEmpty() ? adt_samples_hashtags.collect { sample_id, hashtag -> "${sample_id},${hashtag}" }.join('\n') : ''}
+EOF
+            fi
+        fi
+
         log_ok "Config CSV created: config_sample_${batch_id}.csv"
-        
+
         log_save "Config CSV content saved in logs/${today_date}_multi_${run_id}_${batch_id}_config.csv. Add a publishDir if you want to save it to output directories."
 
         # -------------------------------------------------------------------------
@@ -188,12 +241,12 @@ EOF
         
         log_start "Recording tool versions for reproducibility..."
         
-        cat <<-END_VERSIONS > 3_cellranger_multi_versions_${batch_id}.yml
+        cat <<-END_VERSIONS > 3_cellranger_multi_versions.yml
         "${task.process}":
             cellranger: \$(cellranger --version 2>&1 | grep -oP 'cellranger-\\K[0-9.]+')
         END_VERSIONS
 
-        log_ok "Tool versions recorded successfully in 3_cellranger_multi_versions_${batch_id}.yml"
+        log_ok "Tool versions recorded successfully in 3_cellranger_multi_versions.yml"
 
         # -----------------------------------------------------------------------
         # End

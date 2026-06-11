@@ -1,0 +1,74 @@
+{
+  "comment": "Example params.json with GEX + VDJ + ADT configuration",
+
+  "today_date": "20260605",
+  "run_id": "HCHNTDMX2",
+  "mode": "full",
+  "protocol_prefix": "MIDAS2",
+  "batch_ids": "62",
+
+  "comment_input": "=== INPUT FILES ===",
+  "raw_sample_sheet_file_path": "/labos/UGM/Recherche/midas/sample_sheet/raw_sample_sheet.csv",
+  "bcl_dir": "/labos/UGM/Recherche/midas/BCL_data/HCHNTDMX2",
+
+  "comment_references": "=== GENOME & REFERENCE PATHS ===",
+  "species": "human",
+  "genome_version": "GRCh38",
+  "genome_reference_path": "/labos/UGM/dev/cellranger-pipe/refdata-gex-GRCh38-2020-A",
+  "vdj_reference_path": "/labos/UGM/dev/cellranger-pipe/refdata-cellranger-vdj-GRCh38-alts-ensembl-7.0.0",
+
+  "comment_library_flags": "=== LIBRARY TYPES (set to true to include, false to exclude) ===",
+  "gex": true,
+  "vdj": true,
+  "adt": true,
+
+  "comment_adt_config": "=== ADT (ANTIBODY CAPTURE) CONFIGURATION ===",
+  "adt_reference_path": "/home/dutel/data/reference/other/antibody_capture/feature.csv",
+  "adt_samples_hashtags": {
+    "M2": "TotalSeqC_Hashtag_C0302",
+    "M3": "TotalSeqC_Hashtag_C0303",
+    "M4": "TotalSeqC_Hashtag_C0304",
+    "M5": "TotalSeqC_Hashtag_C0305",
+    "M6": "TotalSeqC_Hashtag_C0306"
+  },
+
+  "comment_preprocessing": "=== PREPROCESSING OUTPUT ===",
+  "preprocessing_output_dir": "/labos/UGM/Recherche/midas/output/preprocessing",
+  "preprocessing_log_dir": "/labos/UGM/Recherche/midas/logs/preprocessing",
+  "preprocessed_sample_sheet_path": null,
+
+  "comment_qc": "=== QC / MKFASTQ OUTPUT ===",
+  "qc_output_dir": "/labos/UGM/Recherche/midas/output/fastqs",
+  "qc_log_dir": "/labos/UGM/Recherche/midas/logs/qc",
+  "fastqs_dir_path": null,
+
+  "comment_alignment": "=== ALIGNMENT / CELLRANGER MULTI OUTPUT ===",
+  "alignment_output_dir": "/labos/UGM/Recherche/midas/output/alignment",
+  "alignment_log_dir": "/labos/UGM/Recherche/midas/logs/alignment",
+
+  "comment_multiqc": "=== MULTIQC OUTPUT ===",
+  "multiqc_output_dir": "/labos/UGM/Recherche/midas/output/multiqc",
+  "multiqc_log_dir": "/labos/UGM/Recherche/midas/logs/multiqc",
+
+  "comment_logging": "=== LOGGING ===",
+  "log_dir": "/labos/UGM/Recherche/midas/logs",
+  "run_traceability_log_dir": "/labos/UGM/Recherche/midas/logs/traceability",
+  "logging_script": "/home/dutel/script/assets/logging.sh",
+
+  "comment_resources": "=== COMPUTATIONAL RESOURCES ===",
+  "cpu_limit": 12,
+  "memory_limit": 40,
+
+  "comment_versions": "=== VERSION INFORMATION ===",
+  "cellranger_version": "cellranger-7.1.0",
+  "pipeline_version": "1.0.0",
+  "min_nextflow_version": "22.10.0",
+
+  "comment_usage_examples": "=== USAGE EXAMPLES ===",
+  "example_1": "nextflow run main.nf -params-file params.example.json -profile slurm",
+  "example_2_gex_only": "nextflow run main.nf -params-file params.example.json --gex true --vdj false --adt false",
+  "example_3_gex_vdj": "nextflow run main.nf -params-file params.example.json --gex true --vdj true --adt false",
+  "example_4_gex_adt": "nextflow run main.nf -params-file params.example.json --gex true --vdj false --adt true",
+  "example_5_all": "nextflow run main.nf -params-file params.example.json --gex true --vdj true --adt true",
+  "example_6_mode": "nextflow run main.nf -params-file params.example.json --mode mkfastq --preprocessed_sample_sheet_path /path/to/sheet.csv"
+}
