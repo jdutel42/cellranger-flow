@@ -1,40 +1,52 @@
 /*
 ========================================================================================
-    MODULE : PREPROCESSING
+    MODULE : PROCESSING_SAMPLE_SHEET
 ========================================================================================
-    Description : Take a raw sample sheet (CSV) and perform necessary preprocessing steps to
+    Description : Take a raw sample sheet (CSV) and perform necessary processing steps to
                   prepare it for downstream analysis. This may include:
                     - Validating required columns (e.g., sample_id, lane, index)
                     - Normalizing column names and formats
-                    - Generating a standardized sample sheet for Cell Ranger
+                    - Generating a processed sample sheet for Cell Ranger
 ----------------------------------------------------------------------------------------
     Inputs :
         path(raw_sample_sheet)       -> Raw sample sheet (CSV)
+        val bcl_id                   -> BCL identifier for logging and output naming
+        val run_id                   -> Run identifier for logging and output naming
+        val processing_output_dir    -> Output directory for processed sample sheet
+        val processing_log_dir       -> Log directory for processing logs
     Outputs :
-        path "Index_mkfastq_${run_id}.csv"   → ch_standardized_sheet
-        path "1_preprocessing_versions.yml"   → ch_versions
+        path "Index_mkfastq_${bcl_id}.csv"   → ch_processed_sample_sheet
+        path "Processing_versions_${bcl_id}.yml"   → ch_versions
 ========================================================================================
 */
 
-process PREPROCESSING {
+process PROCESSING_SAMPLE_SHEET {
 
     // Tag and label for logging and resource allocation
     // A task is 1 execution of 1 process for 1 set of inputs. for exemple, cellranger_multi with run_id = HCHNTDMX2 and batch_id = 74 is a task
     // A tag is useful to differentiate tasks of the same process (e.g. cellranger_multi) with different inputs (e.g. batch_id) and thus to have different log files and job names in SLURM. The tag is defined in the modules.
-    tag "Prep_${run_id}_Preprocessing_samplesheet" // Log the name of the input sample sheet for "Pro" = "Processing sample-sheet"
+    tag "PrSS_${bcl_id}_Processing_Sample_Sheet" // Log the name of the input sample sheet for "Pro" = "Processing sample-sheet"
     label 'process_high' // Use a high resource label since this is a lightweight step
 
-    // Publish the standardized sample sheet to the output directory for reference
-    // Publish the standardized sample sheet with a descriptive name
+    // Publish the processed sample sheet to the output directory for reference
     publishDir (
-        path    : "${params.preprocessing_output_dir}", // Use the output directory defined in params 
+        path    : "${params.processing_output_dir}", // Use the output directory defined in params 
         mode    : 'copy',
-        pattern : "Index_mkfastq_${run_id}.csv", // Publish the standardized sample sheet with a descriptive name
-        saveAs  : { _filename -> "Index_mkfastq_${run_id}.csv" }
+        pattern : "Index_mkfastq_${bcl_id}.csv", // Publish the processed sample sheet with a descriptive name
+        saveAs  : { _filename -> "Index_mkfastq_${bcl_id}.csv" }
     )
+
+    // Additionally, publish the processed sample sheet to a specific directory for traceability
+    publishDir (
+        path    : "/home/dutel/Data/Sample_sheet/Modified",
+        mode    : 'copy',
+        pattern : "Index_mkfastq_${bcl_id}.csv",
+        saveAs  : { _filename -> "Index_mkfastq_${bcl_id}.csv" }
+    )
+
     // Publish logs to a dedicated directory
     publishDir (
-        path    : "${params.preprocessing_log_dir}",
+        path    : "${params.processing_log_dir}",
         mode    : 'copy',
         pattern : "logs/*.log"
     )
@@ -44,16 +56,16 @@ process PREPROCESSING {
     path raw_sample_sheet_file_path // raw_sample_sheet.csv path define in the main.nf file defined in the command line
     val bcl_id // bcl_id from params to use in logging and output naming
     val run_id // run_id from params to use in logging and output naming
-    val preprocessing_output_dir // Output directory for standardized sample sheet
-    val preprocessing_log_dir // Log directory for preprocessing logs
-    val today_date // Today's date for logging and output naming
+    val processing_output_dir // Output directory for processed sample sheet
+    val processing_log_dir // Log directory for processing logs
+    //val today_date // Today's date for logging and output naming // Commented out since it invalidate --resume function of nextflow if the date changes
 
-    // Output the standardized sample sheet and versions information
+    // Output the processed sample sheet and versions information
     output:
-    path "Index_mkfastq_${run_id}.csv", emit: preprocessed_sample_sheet // Name of the standardized sample sheet channel
-    path "1_preprocessing_versions.yml", emit: versions // Emit versions information for reproducibility
+    path "Index_mkfastq_${bcl_id}.csv",       emit: ch_processed_samplesheet // Name of the processed sample sheet channel
+    path "Processing_versions_${bcl_id}.yml", emit: ch_versions // Emit versions information for reproducibility
 
-    // Script section to perform the preprocessing
+    // Script section to perform the processing
     script:
     """
     # Exit on error (set -e), undefined variable (set -u), or error in pipeline (set -o pipefail)
@@ -62,29 +74,28 @@ process PREPROCESSING {
     # Create logs directory in work/
     mkdir -p logs
 
-    # Redirect all log (stdout and stderr) to a log file for this process
-    exec > >(tee logs/${today_date}_preprocessing_${bcl_id}.log) 2>&1
+    # Redirect all logs (stdout and stderr) to a log file for this process
+    exec > >(tee logs/Processing_${bcl_id}.log) 2>&1
 
     # Load shared logging helpers
     source "${params.logging_script}"
 
-    log_init "Step 1: Preprocessing sample sheet = ${raw_sample_sheet_file_path}..."
+    log_init "Step 1: Processing sample sheet = ${raw_sample_sheet_file_path}..."
 
-    log_log "Logs will be saved to ${preprocessing_log_dir}/${today_date}_preprocessing_${bcl_id}.log"
+    log_log "Logs will be saved to ${processing_log_dir}/Processing_${bcl_id}.log"
 
     log_info "
     ╔═══════════════════════════════════════════════════════════════════════════════╗
-    ║                         Preprocessing Process Script                          ║
+    ║                         Processing Process Script                             ║
     ╠═══════════════════════════════════════════════════════════════════════════════╣
     ║ Logging input parameters:
-    ║ - bcl_id: ${bcl_id}
-    ║ - run_id: ${run_id}
-    ║ - raw_sample_sheet: ${raw_sample_sheet_file_path}
+    ║ - bcl_id: ${params.bcl_id}
+    ║ - run_id: ${params.run_id}
+    ║ - raw_sample_sheet: ${params.raw_samplesheet_file_path}
     ║ - cpus: ${params.cpu_limit}
     ║ - mem_gb: ${params.memory_limit}
-    ║ - preprocessing_output_dir: ${preprocessing_output_dir}
-    ║ - preprocessing_log_dir: ${preprocessing_log_dir}
-    ║ - today_date: ${today_date}
+    ║ - processing_output_dir: ${params.processing_output_dir}
+    ║ - processing_log_dir: ${params.processing_log_dir}
     ╚═══════════════════════════════════════════════════════════════════════════════╝
     "
 
@@ -185,22 +196,22 @@ process PREPROCESSING {
     # -----------------------------------------------------------------------
     log_start "Recording tool versions for reproducibility..."
 
-    cat <<EOF > 1_preprocessing_versions.yml
+    cat <<EOF > Processing_versions_${bcl_id}.yml
     "${task.process}":
     awk: "\$(awk -W version 2>&1 | head -n1 | sed 's/\\t/ /g')"
     EOF
     
-    log_ok "Tool versions recorded successfully in 1_preprocessing_versions.yml"
+    log_ok "Tool versions recorded successfully in Processing_versions_${bcl_id}.yml"
 
     # -----------------------------------------------------------------------
     # End
     # -----------------------------------------------------------------------
     
-    log_save "Preprocessed sample sheet for bcl_id ${bcl_id} saved to ${preprocessing_output_dir}/Index_mkfastq_${bcl_id}.csv."
-    log_log "Versions information will be saved to ${params.run_traceability_log_dir}/${today_date}_versions_${bcl_id}.yaml"
-    log_log "Logs saved to ${preprocessing_log_dir}/${today_date}_preprocessing_${bcl_id}.log"
+    log_save "Processed sample sheet for bcl_id ${bcl_id} saved to ${params.processing_output_dir}/Index_mkfastq_${bcl_id}.csv."
+    log_log "Versions information will be saved to ${params.run_traceability_log_dir}/Processing_versions_${bcl_id}.yaml"
+    log_log "Logs saved to ${params.processing_log_dir}/Processing_${bcl_id}.log"
 
-    log_success "Preprocessing of sample sheet completed successfully : ${preprocessing_output_dir}/Index_mkfastq_${bcl_id}.csv !"
+    log_success "Processing of sample sheet completed successfully : ${params.processing_output_dir}/Index_mkfastq_${bcl_id}.csv !"
     """
 
     stub:
@@ -212,10 +223,11 @@ process PREPROCESSING {
         echo "test_sample,AAAAAA" >> Index_mkfastq_${bcl_id}.csv
         
         # Create minimal versions file
-        cat > 1_preprocessing_versions.yml <<EOF
-"PREPROCESSING":
+        cat > Processing_versions_${bcl_id}.yml <<EOF
+"PROCESSING":
         "bcl_id": "${bcl_id}"
-        "timestamp": "${today_date}"
+        "run_id": "${run_id}"
+        "awk_version": "awk 5.1.0"
 EOF
     """
 }

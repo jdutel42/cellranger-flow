@@ -1,28 +1,15 @@
 /*
 ========================================================================================
-    SUB-WORKFLOW : FASTQ_TO_COUNT
+    SUB-WORKFLOW : GEX_VDJ_subworkflow
 ========================================================================================
-    Description : Orchestrates alignment / quantification directly from existing
-                  FASTQ files. Each sample is processed in parallel.
+    Description : Orchestrates the sample sheet preprocessing, generation and processingof FASTQ files for GEX and VDJ data using CellRanger Mkfastq and Multi, 
+                  followed by QC report generation with MultiQC and merging of versions information.
     Steps       :
-        1. CELLRANGER_COUNT (FASTQ per sample -> matrices + metrics)
-----------------------------------------------------------------------------------------
-    Expected input directory convention:
-        <input_dir>/
-          <sample_id_1>/
-            <sample_id_1>_S1_L001_R1_001.fastq.gz
-            <sample_id_1>_S1_L001_R2_001.fastq.gz
-            ...
-          <sample_id_2>/
-            ...
-    Inputs :
-        ch_fastq_dirs : Channel[ tuple(sample_id, fastq_dir) ]
-    Outputs :
-        ch_matrices       : Channel[ tuple(sample_id, filtered_matrix_dir) ]
-        ch_metrics        : Channel[ tuple(sample_id, metrics_summary.csv) ]
-        ch_web_summaries  : Channel[ tuple(sample_id, web_summary.html) ]
-        ch_molecule_info  : Channel[ tuple(sample_id, molecule_info.h5) ]
-        ch_versions       : Channel[ versions.yml ]
+        1. PREPROCESSING       (raw sample sheet -> standardized sample sheet)
+        2. CELLRANGER_MKFASTQ  (BCL + standardized sample sheet -> FASTQ per sample)
+        3. CELLRANGER_MULTI    (FASTQ per sample + references -> matrices + metrics + web summaries)
+        4. MULTIQC             (metrics summaries + web summaries -> MultiQC report)
+        5. MERGE_VERSIONS      (versions.yml from all steps -> merged versions.yml with run_id and date)
 ========================================================================================
 */
 

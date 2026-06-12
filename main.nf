@@ -17,7 +17,7 @@ nextflow.enable.dsl = 2
 // IMPORTS MODULS
 // ========================================================================================
 
-include { PREPROCESSING       } from './modules/preprocessing.nf'
+include { PROCESSING_SAMPLE_SHEET } from './modules/processing_sample_sheet.nf'
 include { CELLRANGER_MKFASTQ  } from './modules/cellranger_mkfastq.nf'
 include { CELLRANGER_MULTI    } from './modules/cellranger_multi.nf'
 include { MULTIQC             } from './modules/multiqc.nf'
@@ -26,8 +26,6 @@ include { MERGE_VERSIONS      } from './modules/merge_versions.nf'
 // ========================================================================================
 // IMPORTS SUB-WORKFLOWS
 // ========================================================================================
-
-include { GEX_VDJ_subworkflow } from './subworkflows/GEX_VDJ_subworkflow.nf'
 
 // ========================================================================================
 // DISPLAY INITIAL LOGGING
@@ -48,7 +46,7 @@ def printHeader() {
     ║  genome_reference_path    : ${params.genome_reference_path}
     ║  vdj_reference_path       : ${params.vdj_reference_path}
     ║  output_dir               : ${params.output_dir}
-    ║  preprocessing_output_dir : ${params.preprocessing_output_dir}
+    ║  processing_output_dir    : ${params.processing_output_dir}
     ║  qc_output_dir            : ${params.qc_output_dir}
     ║  alignment_output_dir     : ${params.alignment_output_dir}
     ║  multiqc_output_dir       : ${params.multiqc_output_dir}
@@ -249,17 +247,17 @@ def validateParams() {
         }
     }
 
-    // Check preprocessing output directory (optional, but if provided, must be a directory)
-    if (!params.preprocessing_output_dir) {
-        log.warn "[WARNING]: ⚠️ The --preprocessing_output_dir parameter is not specified. Default preprocessing output directory will be set to: ${params.preprocessing_output_dir}"
+    // Check processing output directory (optional, but if provided, must be a directory)
+    if (!params.processing_output_dir) {
+        log.warn "[WARNING]: ⚠️ The --processing_output_dir parameter is not specified. Default processing output directory will be set to: ${params.processing_output_dir}"
     } else {
-        def preproc_output_path = file(params.preprocessing_output_dir)
+        def preproc_output_path = file(params.processing_output_dir)
         if (!preproc_output_path.exists()) {
-            log.warn "[WARNING]: ⚠️ Preprocessing output directory does not exist. It will be created: ${params.preprocessing_output_dir}"
+            log.warn "[WARNING]: ⚠️ Processing output directory does not exist. It will be created: ${params.processing_output_dir}"
             preproc_output_path.mkdirs()
         } else {
             if (!preproc_output_path.isDirectory()) {
-                error "[ERROR]: ❌ --preprocessing_output_dir must be a directory, not a file: ${params.preprocessing_output_dir}"
+                error "[ERROR]: ❌ --processing_output_dir must be a directory, not a file: ${params.processing_output_dir}"
             }
         }
     }
@@ -325,16 +323,16 @@ def validateParams() {
     }
 
     // Check preprocessing log directory (optional, but if provided, must be a directory)
-    if (!params.preprocessing_log_dir) {
-        log.warn "[WARNING]: ⚠️ The --preprocessing_log_dir parameter is not specified. Default preprocessing log directory will be set to: ${params.preprocessing_log_dir}"
+    if (!params.processing_log_dir) {
+        log.warn "[WARNING]: ⚠️ The --processing_log_dir parameter is not specified. Default processing log directory will be set to: ${params.processing_log_dir}"
     } else {
-        def preproc_log_path = file(params.preprocessing_log_dir)
+        def preproc_log_path = file(params.processing_log_dir)
         if (!preproc_log_path.exists()) {
-            log.warn "[WARNING]: ⚠️ Preprocessing log directory does not exist. It will be created: ${params.preprocessing_log_dir}"
+            log.warn "[WARNING]: ⚠️ Processing log directory does not exist. It will be created: ${params.processing_log_dir}"
             preproc_log_path.mkdirs()
         } else {
             if (!preproc_log_path.isDirectory()) {
-                error "[ERROR]: ❌ --preprocessing_log_dir must be a directory, not a file: ${params.preprocessing_log_dir}"
+                error "[ERROR]: ❌ --processing_log_dir must be a directory, not a file: ${params.processing_log_dir}"
             }
         }
     }
@@ -466,22 +464,22 @@ workflow {
     ch_versions = channel.empty()
 
     // -----------------------------------------------------------------------
-    // STEP 1: Preprocess the sample sheet to standardize it for downstream tools
+    // STEP 1: Process the sample sheet to standardize it for downstream tools
     // -----------------------------------------------------------------------
 
-    // Run PREPROCESSING module
-    if (shouldRun("preprocessing")) {
-        PREPROCESSING(
+    // Run PROCESSING_SAMPLE_SHEET module
+    if (shouldRun("processing_sample_sheet")) {
+        PROCESSING_SAMPLE_SHEET(
             file(params.raw_sample_sheet_file_path, checkIfExists: true), // Access the raw sample sheet path from params
+            params.bcl_id, // Pass bcl_id for sample sheet processing and output naming
             params.run_id, // Pass run_id for logging and output naming
-            params.preprocessing_output_dir, // Pass output directory for standardized sample sheet
-            params.preprocessing_log_dir, // Pass log directory for preprocessing logs
-            params.today_date // Pass today's date for logging and output naming
+            params.processing_output_dir, // Pass output directory for standardized sample sheet
+            params.processing_log_dir // Pass log directory for processing logs
         )
 
-        // Capture outputs from PREPROCESSING
-        ch_preprocessed_sample_sheet = PREPROCESSING.out.preprocessed_sample_sheet // Capture channel for standardized sample sheet
-        ch_versions = ch_versions.mix(PREPROCESSING.out.versions) // Capture channel for versions information (mix for cumulation across steps)
+        // Capture outputs from PROCESSING_SAMPLE_SHEET
+        ch_preprocessed_sample_sheet = PROCESSING_SAMPLE_SHEET.out.ch_processed_samplesheet // Capture channel for standardized sample sheet
+        ch_versions = ch_versions.mix(PROCESSING_SAMPLE_SHEET.out.ch_versions) // Capture channel for versions information (mix for cumulation across steps)
     } else {
         ch_preprocessed_sample_sheet = channel.fromPath(params.preprocessed_sample_sheet_path)
     }
