@@ -1,7 +1,7 @@
 #!/bin/bash
 #SBATCH --job-name=nextflow_cellranger
 #SBATCH --partition=phoenix
-#SBATCH --time=7-00:00:00
+#SBATCH --time=14-00:00:00
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=2G
 #SBATCH --output=/home/dutel/Log/nextflow_controller/nextflow_controller_%x_%j.out

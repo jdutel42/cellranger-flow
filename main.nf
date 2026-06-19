@@ -39,7 +39,7 @@ def printHeader() {
     ║  run_id                   : ${params.run_id}
     ║  raw_sample_sheet         : ${params.raw_sample_sheet_file_path}
     ║  bcl_dir                  : ${params.bcl_dir}
-    ║  protocol_prefix          : ${params.protocol_prefix}
+    ║  protocol_id              : ${params.protocol_id}
     ║  batch_ids                : ${params.batch_ids}
     ║  species                  : ${params.species}
     ║  genome_version           : ${params.genome_version}
@@ -117,16 +117,16 @@ def validateParams() {
         }
     }
 
-    // Check for protocol prefix (required for batch naming)
-    if (!params.protocol_prefix) {
-        error "[ERROR]: ❌ The --protocol_prefix parameter is required for batch naming. Please provide a prefix that will be used to construct batch names, e.g., 'MIDAS2' or 'TecNante'."
+    // Check for protocol ID (required for batch naming)
+    if (!params.protocol_id) {
+        error "[ERROR]: ❌ The --protocol_id parameter is required for batch naming. Please provide an ID that will be used to construct batch names, e.g., 'MIDAS2' or 'TecNante'."
     } else {
-        // Validate that protocol_prefix is a non-empty string without spaces (to ensure valid batch names)
-        if (params.protocol_prefix.trim().isEmpty()) {
-            error "[ERROR]: ❌ The --protocol_prefix parameter cannot be empty. Please provide a valid prefix for batch naming, e.g., 'MIDAS2' or 'TecNante'."
+        // Validate that protocol_id is a non-empty string without spaces (to ensure valid batch names)
+        if (params.protocol_id.trim().isEmpty()) {
+            error "[ERROR]: ❌ The --protocol_id parameter cannot be empty. Please provide a valid ID for batch naming, e.g., 'MIDAS2' or 'TecNante'."
         }
-        if (params.protocol_prefix.contains(' ')) {
-            error "[ERROR]: ❌ The --protocol_prefix parameter cannot contain spaces. Please provide a valid prefix for batch naming, e.g., 'MIDAS2' or 'TecNante'."
+        if (params.protocol_id.contains(' ')) {
+            error "[ERROR]: ❌ The --protocol_id parameter cannot contain spaces. Please provide a valid ID for batch naming, e.g., 'MIDAS2' or 'TecNante'."
         }
     }
 
@@ -451,7 +451,7 @@ workflow {
     // Initialization and logging
     // -----------------------------------------------------------------------
     // Print the date and time when the workflow starts
-    log.info "[INFO]: 🚀🚀🚀 Starting CellRanger_Flow workflow at ${params.today_date} with run_id ${params.run_id}..."
+    log.info "[INFO]: 🚀🚀🚀 Starting CellRanger_Flow workflow with run_id ${params.run_id}..."
 
     // Print header and validate parameters at the start of the workflow
     printHeader()
