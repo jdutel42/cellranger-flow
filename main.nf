@@ -470,41 +470,29 @@ workflow {
     // Run PROCESSING_SAMPLE_SHEET module
     if (shouldRun("processing_sample_sheet")) {
         PROCESSING_SAMPLE_SHEET(
-            file(params.raw_sample_sheet_file_path, checkIfExists: true), // Access the raw sample sheet path from params
-            params.bcl_id, // Pass bcl_id for sample sheet processing and output naming
-            params.run_id, // Pass run_id for logging and output naming
-            params.processing_output_dir, // Pass output directory for standardized sample sheet
-            params.processing_log_dir // Pass log directory for processing logs
+            file(params.raw_sample_sheet_file_path, checkIfExists: true) // Access the raw sample sheet path from params
         )
-
+        
         // Capture outputs from PROCESSING_SAMPLE_SHEET
-        ch_preprocessed_sample_sheet = PROCESSING_SAMPLE_SHEET.out.ch_processed_samplesheet // Capture channel for standardized sample sheet
+        ch_processed_sample_sheet = PROCESSING_SAMPLE_SHEET.out.ch_processed_sample_sheet // Capture channel for standardized sample sheet
         ch_versions = ch_versions.mix(PROCESSING_SAMPLE_SHEET.out.ch_versions) // Capture channel for versions information (mix for cumulation across steps)
     } else {
-        ch_preprocessed_sample_sheet = channel.fromPath(params.preprocessed_sample_sheet_path)
+        ch_processed_sample_sheet = channel.fromPath(params.processed_sample_sheet_path)
     }
 
     // -----------------------------------------------------------------------
     // STEP 2: Process BCL files to FASTQ according standardized sample sheet
     // -----------------------------------------------------------------------
 
-    if (shouldRun("mkfastq")) {
-        // Build mkfastq tuple input: (run_id, bcl_dir, preprocessed_sample_sheet)
-        ch_mkfastq_input = ch_preprocessed_sample_sheet.map { preprocessed_sample_sheet ->
-            tuple(params.run_id, file(params.bcl_dir), preprocessed_sample_sheet)
-        }
-
-        // Run CELLRANGER_MKFASTQ module
+    // Run CELLRANGER_MKFASTQ module
+    if (shouldRun("cellranger_mkfastq")) {
         CELLRANGER_MKFASTQ(
-            ch_mkfastq_input, // Tuple input expected by module
-            params.qc_output_dir, // Pass output directory for FASTQ files
-            params.qc_log_dir, // Pass log directory for QC logs
-            params.today_date // Pass today's date for logging and output naming
+            ch_processed_sample_sheet // Pass the channel of processed sample sheet generated from the previous step
         )
 
         // Capture outputs from CELLRANGER_MKFASTQ
-        ch_fastqs = CELLRANGER_MKFASTQ.out.fastqs // Capture channel for generated FASTQ files
-        ch_versions = ch_versions.mix(CELLRANGER_MKFASTQ.out.versions) // Capture channel for versions information (mix for cumulation across steps)
+        ch_fastqs = CELLRANGER_MKFASTQ.out.ch_fastqs // Capture channel for generated FASTQ files
+        ch_versions = ch_versions.mix(CELLRANGER_MKFASTQ.out.ch_versions) // Capture channel for versions information (mix for cumulation across steps)
     } else {
         ch_fastqs = channel.fromPath(params.fastqs_dir_path)
     }
@@ -513,63 +501,51 @@ workflow {
     // STEP 3: Perform Alignment with Cellranger Multi
     // -----------------------------------------------------------------------
 
-    if (shouldRun("multi")) {
-        // Convert the comma-separated batch IDs string into a list of batch id
-        batch_ids_list = params.batch_ids.toString().split(',') // Split the comma-separated batch IDs into a list of batch_id
+    if (shouldRun("cellranger_multi")) {
+        // Use sample_ids directly when provided; otherwise reconstruct batch names from batch_ids
+        //def multi_sample_ids = params.sample_ids
+        //    ? params.sample_ids.toString().split(',').collect { sample_id -> sample_id.trim() }
+        //    : params.batch_ids.toString().split(',').collect { batch_id -> "${params.protocol_id}_batch${batch_id}" }
 
-        // Create a channel with several elements (batch_id), each will be pass to a separate instance of CELLRANGER_MULTI, enabling parallel alignment across all requested batches.
-        ch_batch_id = channel
-            .from(batch_ids_list) // From the list of batch IDs
-            .map { batch_id -> "${params.protocol_prefix}_batch${batch_id}" } // Map each batch_id in batch_ids_list to a full_batch_name
-
-        // Build multi tuple input: (run_id, batch_id)
-        ch_multi_input = ch_batch_id.map { batch_id -> tuple(params.run_id, batch_id) }
+        // Build multi tuple input: (run_id, sample_id/batch_id)
+        //ch_multi_input = channel.from(multi_sample_ids).map { sample_id -> tuple(params.run_id, sample_id) }
         
+        // Create a channel of sample IDs for Cellranger Multi
+        ch_sample_ids = Channel.from(params.sample_ids.split(',').collect { it.trim() })
+
+        // Create channel of tuples (fastq_dir, sample_id) with combine operator
+        ch_multi_input = ch_fastqs.combine(ch_sample_ids)
+
         // Run CELLRANGER_MULTI module
         CELLRANGER_MULTI(
-            ch_multi_input, // Tuple input expected by module
-            ch_fastqs, // Pass the channel of FASTQ directories generated from the previous step
-            params.genome_reference_path, // GEX reference from params
-            params.vdj_reference_path, // VDJ reference from params
-            params.adt_reference_path, // ADT reference from params (optional)
-            params.adt_samples_hashtags ?: [:], // ADT samples hashtag mappings from params (optional, defaults to empty map)
-            params.alignment_output_dir, // Pass output directory for Cellranger Multi results
-            params.alignment_log_dir, // Pass log directory for Cellranger Multi
-            params.today_date // Pass today's date for logging and output naming
+            ch_multi_input // Tuples input expected by module
         )
 
         // Capture outputs from CELLRANGER_MULTI
-        ch_metrics = CELLRANGER_MULTI.out.metrics // Capture channel for metrics summary
-        ch_web_summaries = CELLRANGER_MULTI.out.web_summaries // Capture channel for web summaries
-        ch_versions = ch_versions.mix(CELLRANGER_MULTI.out.versions) // Capture channel for versions information (mix for cumulation across steps)
+        ch_multiqc_input = CELLRANGER_MULTI.out.ch_multi_ouput // Capture channel for MultiQC input (metrics summaries and web summaries)
+        ch_metrics = CELLRANGER_MULTI.out.ch_metrics // Capture channel for metrics summary
+        ch_web_summaries = CELLRANGER_MULTI.out.ch_web_summaries // Capture channel for web summaries
+        ch_versions = ch_versions.mix(CELLRANGER_MULTI.out.ch_versions) // Capture channel for versions information (mix for cumulation across steps)
     } else {
         ch_metrics = channel.fromPath(params.metrics_dir_path)
         ch_web_summaries = channel.fromPath(params.web_summaries_dir_path)
     }
+
     // -----------------------------------------------------------------------
     // STEP 4: MultiQC report generation
     // -----------------------------------------------------------------------
 
     if (shouldRun("multiqc")) {
         // Combine metrics summaries and web summaries into a single channel for MultiQC input
-        ch_qc_files = 
-            ch_metrics.map { _batch_id, f -> f } // In ch_metrics (that is a tuple(batch_id, metrics_file_path)), extract the file path (f) for each batch_id and create a channel of metrics summary files
-            .mix(ch_web_summaries.map { _batch_id, f -> f }) 
-            // In ch_web_summaries (that is a tuple(batch_id, web_summary_file_path)), 
-            // extract the file path (f) for each batch_id and create a channel of web summary files 
-            // ==> then mix it with the channel of metrics summary files to create a single channel of QC files for MultiQC input, containing both metrics summaries and web summaries from all batches
+        ch_multi_output = ch_metrics.map { _, file -> file }.mix(ch_web_summaries.map { _, file -> file }).mix(ch_fastqs)
+        ch_multiqc_input = ch_multi_output.collect() // Collect all files into a single list for MultiQC input
 
         // Run MULTIQC module
         MULTIQC(
-            ch_qc_files.collect(), // Pass the channel of QC files collected (metrics summaries and web summaries) generated from Cellranger Multi
-            ch_fastqs.collect(), // Pass the channel of FASTQ directories generated from the previous step for MultiQC to link raw data in the report
-            params.run_id, // Pass run_id for logging and output naming
-            params.multiqc_output_dir, // Pass output directory for MultiQC results
-            params.multiqc_log_dir, // Pass log directory for MultiQC logs
-            params.today_date // Pass today's date for logging and output naming
+            ch_multiqc_input
         )
 
-        ch_versions = ch_versions.mix(MULTIQC.out.versions)
+        ch_versions = ch_versions.mix(MULTIQC.out.ch_versions)
     } else {
         // If MultiQC step is skipped, we can still capture the versions information from previous steps
         ch_versions = ch_versions.mix(channel.fromPath(params.versions_dir_path))
@@ -581,11 +557,9 @@ workflow {
 
     if (shouldRun("merge_versions")) {
         // Merge all per-module versions.yml files into one dated versions file
+        ch_versions = ch_versions.collect() // Collect all versions files into a single list for merging
         MERGE_VERSIONS(
-            params.run_id, // Pass run_id for logging and output naming
-            ch_versions.collect(),
-            params.run_traceability_log_dir, // Pass log directory for traceability logs (merged versions.yml)
-            params.today_date
+            ch_versions
         )
     } else {
         // If merge versions step is skipped, we can still capture the versions information from previous steps
@@ -598,12 +572,12 @@ workflow {
 
     // Capture values now because params can be unavailable in event handler scope
     def finalLogDir = params.log_dir
-    def finalTodayDate = params.today_date
+    // def finalTodayDate = params.today_date
     def nfLogPath = '.nextflow.log'
 
     workflow.onComplete {
     def src = file(nfLogPath)
-    def dst = file("${finalLogDir}/${finalTodayDate}_nextflow.log")
+    def dst = file("${finalLogDir}/nextflow.log")
 
     if (src.exists()) {
         file(finalLogDir).mkdirs()

@@ -9,14 +9,11 @@
                     - Generating a processed sample sheet for Cell Ranger
 ----------------------------------------------------------------------------------------
     Inputs :
-        path(raw_sample_sheet)       -> Raw sample sheet (CSV)
-        val bcl_id                   -> BCL identifier for logging and output naming
-        val run_id                   -> Run identifier for logging and output naming
-        val processing_output_dir    -> Output directory for processed sample sheet
-        val processing_log_dir       -> Log directory for processing logs
+        path(raw_sample_sheet_file_path) -> Raw sample sheet path for input
+
     Outputs :
-        path "Index_mkfastq_${bcl_id}.csv"   → ch_processed_sample_sheet
-        path "Processing_versions_${bcl_id}.yml"   → ch_versions
+        path "Index_mkfastq_${params.bcl_id}.csv"         → ch_processed_sample_sheet
+        path "Processing_versions_${params.bcl_id}.yml"   → ch_versions
 ========================================================================================
 */
 
@@ -25,23 +22,23 @@ process PROCESSING_SAMPLE_SHEET {
     // Tag and label for logging and resource allocation
     // A task is 1 execution of 1 process for 1 set of inputs. for exemple, cellranger_multi with run_id = HCHNTDMX2 and batch_id = 74 is a task
     // A tag is useful to differentiate tasks of the same process (e.g. cellranger_multi) with different inputs (e.g. batch_id) and thus to have different log files and job names in SLURM. The tag is defined in the modules.
-    tag "PrSS_${bcl_id}_Processing_Sample_Sheet" // Log the name of the input sample sheet for "Pro" = "Processing sample-sheet"
+    tag "PrSS_${params.bcl_id}_Processing_Sample_Sheet" // Log the name of the input sample sheet for "Pro" = "Processing sample-sheet"
     label 'process_high' // Use a high resource label since this is a lightweight step
 
     // Publish the processed sample sheet to the output directory for reference
     publishDir (
         path    : "${params.processing_output_dir}", // Use the output directory defined in params 
         mode    : 'copy',
-        pattern : "Index_mkfastq_${bcl_id}.csv", // Publish the processed sample sheet with a descriptive name
-        saveAs  : { _filename -> "Index_mkfastq_${bcl_id}.csv" }
+        pattern : "Index_mkfastq_${params.bcl_id}.csv", // Publish the processed sample sheet with a descriptive name
+        saveAs  : { _filename -> "Index_mkfastq_${params.bcl_id}.csv" }
     )
 
     // Additionally, publish the processed sample sheet to a specific directory for traceability
     publishDir (
         path    : "/home/dutel/Data/Sample_sheet/Modified",
         mode    : 'copy',
-        pattern : "Index_mkfastq_${bcl_id}.csv",
-        saveAs  : { _filename -> "Index_mkfastq_${bcl_id}.csv" }
+        pattern : "Index_mkfastq_${params.bcl_id}.csv",
+        saveAs  : { _filename -> "Index_mkfastq_${params.bcl_id}.csv" }
     )
 
     // Publish logs to a dedicated directory
@@ -54,16 +51,11 @@ process PROCESSING_SAMPLE_SHEET {
     // Declare process inputs
     input:
     path raw_sample_sheet_file_path // raw_sample_sheet.csv path define in the main.nf file defined in the command line
-    val bcl_id // bcl_id from params to use in logging and output naming
-    val run_id // run_id from params to use in logging and output naming
-    val processing_output_dir // Output directory for processed sample sheet
-    val processing_log_dir // Log directory for processing logs
-    //val today_date // Today's date for logging and output naming // Commented out since it invalidate --resume function of nextflow if the date changes
 
     // Output the processed sample sheet and versions information
     output:
-    path "Index_mkfastq_${bcl_id}.csv",       emit: ch_processed_samplesheet // Name of the processed sample sheet channel
-    path "Processing_versions_${bcl_id}.yml", emit: ch_versions // Emit versions information for reproducibility
+    path "Index_mkfastq_${params.bcl_id}.csv",       emit: ch_processed_sample_sheet // Name of the processed sample sheet channel
+    path "Processing_versions_${params.bcl_id}.yml", emit: ch_versions // Emit versions information for reproducibility
 
     // Script section to perform the processing
     script:
@@ -71,18 +63,18 @@ process PROCESSING_SAMPLE_SHEET {
     # Exit on error (set -e), undefined variable (set -u), or error in pipeline (set -o pipefail)
     set -euo pipefail
 
-    # Create logs directory in work/
-    mkdir -p logs
+    # Create processing_output and logs directories in work/
+    mkdir -p processing_output_${params.bcl_id} logs
 
     # Redirect all logs (stdout and stderr) to a log file for this process
-    exec > >(tee logs/Processing_${bcl_id}.log) 2>&1
+    exec > >(tee logs/Processing_${params.bcl_id}.log) 2>&1
 
     # Load shared logging helpers
     source "${params.logging_script}"
 
     log_init "Step 1: Processing sample sheet = ${raw_sample_sheet_file_path}..."
 
-    log_log "Logs will be saved to ${processing_log_dir}/Processing_${bcl_id}.log"
+    log_log "Logs will be saved to ${params.processing_log_dir}/Processing_${params.bcl_id}.log"
 
     log_info "
     ╔═══════════════════════════════════════════════════════════════════════════════╗
@@ -91,7 +83,7 @@ process PROCESSING_SAMPLE_SHEET {
     ║ Logging input parameters:
     ║ - bcl_id: ${params.bcl_id}
     ║ - run_id: ${params.run_id}
-    ║ - raw_sample_sheet: ${params.raw_samplesheet_file_path}
+    ║ - raw_sample_sheet: ${params.raw_sample_sheet_file_path}
     ║ - cpus: ${params.cpu_limit}
     ║ - mem_gb: ${params.memory_limit}
     ║ - processing_output_dir: ${params.processing_output_dir}
@@ -100,7 +92,7 @@ process PROCESSING_SAMPLE_SHEET {
     "
 
     # ============================================================================
-    # Initialisation
+    # Initialisation & Verification
     # ============================================================================
 
     # Create temporary file for processing
@@ -185,33 +177,33 @@ process PROCESSING_SAMPLE_SHEET {
     fi
 
     # Rename the processed sheet to the final output name
-    mv "\${TEMP_SHEET}.tmp" Index_mkfastq_${bcl_id}.csv
+    mv "\${TEMP_SHEET}.tmp" Index_mkfastq_${params.bcl_id}.csv
 
     log_ok "Processed columns and cleaned up sample sheet."
     
-    log_save "Output saved to Index_mkfastq_${bcl_id}.csv"
+    log_save "Output saved to Index_mkfastq_${params.bcl_id}.csv"
 
     # -----------------------------------------------------------------------
     # Record tool version
     # -----------------------------------------------------------------------
     log_start "Recording tool versions for reproducibility..."
 
-    cat <<EOF > Processing_versions_${bcl_id}.yml
+    cat <<EOF > Processing_versions_${params.bcl_id}.yml
     "${task.process}":
     awk: "\$(awk -W version 2>&1 | head -n1 | sed 's/\\t/ /g')"
     EOF
     
-    log_ok "Tool versions recorded successfully in Processing_versions_${bcl_id}.yml"
+    log_ok "Tool versions recorded successfully in Processing_versions_${params.bcl_id}.yml"
 
     # -----------------------------------------------------------------------
     # End
     # -----------------------------------------------------------------------
     
-    log_save "Processed sample sheet for bcl_id ${bcl_id} saved to ${params.processing_output_dir}/Index_mkfastq_${bcl_id}.csv."
-    log_log "Versions information will be saved to ${params.run_traceability_log_dir}/Processing_versions_${bcl_id}.yaml"
-    log_log "Logs saved to ${params.processing_log_dir}/Processing_${bcl_id}.log"
+    log_save "Processed sample sheet for bcl_id ${params.bcl_id} saved to ${params.processing_output_dir}/Index_mkfastq_${params.bcl_id}.csv."
+    log_log "Versions information will be saved to ${params.run_traceability_log_dir}/Processing_versions_${params.bcl_id}.yaml"
+    log_log "Logs saved to ${params.processing_log_dir}/Processing_${params.bcl_id}.log"
 
-    log_success "Processing of sample sheet completed successfully : ${params.processing_output_dir}/Index_mkfastq_${bcl_id}.csv !"
+    log_success "Processing of sample sheet completed successfully : ${params.processing_output_dir}/Index_mkfastq_${params.bcl_id}.csv !"
     """
 
     stub:
@@ -219,14 +211,14 @@ process PROCESSING_SAMPLE_SHEET {
         mkdir -p logs
         
         # Create minimal CSV stub with headers
-        echo "Sample,Index" > Index_mkfastq_${bcl_id}.csv
-        echo "test_sample,AAAAAA" >> Index_mkfastq_${bcl_id}.csv
+        echo "Sample,Index" > Index_mkfastq_${params.bcl_id}.csv
+        echo "test_sample,AAAAAA" >> Index_mkfastq_${params.bcl_id}.csv
         
         # Create minimal versions file
-        cat > Processing_versions_${bcl_id}.yml <<EOF
+        cat > Processing_versions_${params.bcl_id}.yml <<EOF
 "PROCESSING":
-        "bcl_id": "${bcl_id}"
-        "run_id": "${run_id}"
+        "bcl_id": "${params.bcl_id}"
+        "run_id": "${params.run_id}"
         "awk_version": "awk 5.1.0"
 EOF
     """

@@ -7,17 +7,18 @@
     Conda       : /labos/UGM/dev/envs/shared/178265b579c72c6695d48557d4eadac6_
 ----------------------------------------------------------------------------------------
     Inputs :
-        tuple val(run_id), path(bcl_dir), path(sample_sheet)
+        val processed_sample_sheet   -> Preprocessed sample sheet path for input
+
     Outputs :
-        path("fastq_output_${run_id}")          → ch_fastqs
-        path "2_cellranger_mkfastq_versions.yml" → ch_versions
+        path "fastq_output_${params.bcl_id}"                    → ch_fastqs
+        path "Cellranger_mkfastq_versions_${params.bcl_id}.yml" → ch_versions
 ========================================================================================
 */
 
 process CELLRANGER_MKFASTQ {
 
     // Tag and label for logging and resource allocation
-    tag "2_${run_id}_CellRanger_MKFASTQ_${params.protocol_prefix}" // Log the run ID for traceability for "CrF" = "Cell Ranger mkFastq"
+    tag "CrMk_${params.bcl_id}_CellRanger_Mkfastq_${params.protocol_prefix}" // Log the run ID for traceability for "CrF" = "Cell Ranger mkFastq"
     label 'process_high' // Use a high resource label since this step can be computationally intensive
 
     // Container specification for reproducibility
@@ -29,7 +30,7 @@ process CELLRANGER_MKFASTQ {
     publishDir (
         path    : params.qc_output_dir, // Use the QC output directory for FASTQ outputs
         mode    : 'copy', // Copy files to the output directory
-        pattern : "fastq_output_${run_id}/**" // Publish the full directory tree produced by cellranger mkfastq
+        pattern : "fastq_output_${params.bcl_id}/**" // Publish the full directory tree produced by cellranger mkfastq
     )
     
     // Publish logs to a dedicated directory
@@ -41,15 +42,12 @@ process CELLRANGER_MKFASTQ {
 
     // Declare process inputs
     input:
-        tuple val(run_id), val(bcl_dir), path(preprocessed_sample_sheet)
-        val qc_output_dir // Output directory for FASTQ files (val because it's STRING path)
-        val qc_log_dir // Log directory for QC logs
-        val today_date // Today's date for logging and output naming
+        val processed_sample_sheet // Preprocessed sample sheet path for input
 
     // Output the generated FASTQ files, versions information, and logs
     output:
-        path("fastq_output_${run_id}"), emit: fastqs
-        path "2_cellranger_mkfastq_versions.yml", emit: versions
+        path "fastq_output_${params.bcl_id}",                    emit: ch_fastqs
+        path "Cellranger_mkfastq_versions_${params.bcl_id}.yml", emit: ch_versions
 
     // Script section to run cellranger mkfastq
     script:
@@ -57,31 +55,32 @@ process CELLRANGER_MKFASTQ {
         # Exit on error (set -e), undefined variable (set -u), or error in pipeline (set -o pipefail)
         set -euo pipefail
 
-        # Create logs directory if it doesn't exist
-        mkdir -p fastq_output_${run_id} logs
+        # Create fastq_output and logs directories in work/
+        mkdir -p fastq_output_${params.bcl_id} logs
 
         # Redirect all log (stdout and stderr) to a log file for this process
-        exec > >(tee -a logs/${today_date}_mkfastq_${run_id}.log) 2>&1
+        exec > >(tee -a logs/Cellranger_mkfastq_log_${params.bcl_id}.log) 2>&1
 
         # Load shared logging helpers
         source "${params.logging_script}"
 
-        log_init "Step 2: Processing BCL files to FASTQ with Cellranger mkfastq for run_id = ${run_id}"
-        log_log "Logs will be saved to ${qc_log_dir}/${today_date}_mkfastq_${run_id}.log"
+        log_init "Step 2: Processing BCL files to FASTQ with Cellranger mkfastq for run_id = ${params.run_id}"
+        
+        log_log "Logs will be saved to ${params.qc_log_dir}/Cellranger_mkfastq_log_${params.bcl_id}.log"
 
         log_info "
         ╔═══════════════════════════════════════════════════════════════════════════════╗
-        ║                         Cell Ranger mkfastq Process Script                    ║
+        ║                         CellRanger mkfastq Process Script                    ║
         ╠═══════════════════════════════════════════════════════════════════════════════╣
         ║ Logging input parameters:
-        ║ - run_id: ${run_id}
-        ║ - bcl_dir: ${bcl_dir}
-        ║ - sample_sheet: ${preprocessed_sample_sheet}
+        ║ - run_id: ${params.run_id}
+        ║ - bcl_id: ${params.bcl_id}
+        ║ - bcl_dir: ${params.bcl_dir}
+        ║ - sample_sheet: ${params.processed_sample_sheet}
         ║ - cpus: ${params.cpu_limit}
         ║ - mem_gb: ${params.memory_limit}
-        ║ - qc_output_dir: ${qc_output_dir}
-        ║ - qc_log_dir: ${qc_log_dir}
-        ║ - today_date: ${today_date}
+        ║ - qc_output_dir: ${params.qc_output_dir}
+        ║ - qc_log_dir: ${params.qc_log_dir}
         ╚═══════════════════════════════════════════════════════════════════════════════╝
         "
 
@@ -91,20 +90,20 @@ process CELLRANGER_MKFASTQ {
 
         log_verify "Verifying input files and directories..."
 
-        # Verify that the BCL directory, preprocessed sample sheet directory exist before running cellranger mkfastq
+        # Verify that the BCL directory, processed sample sheet directory exist before running cellranger mkfastq
         # If not, log an error message and exit with a non-zero status code to indicate failure
-        if [ ! -d "${bcl_dir}" ]; then
-            log_error "Missing BCL dir: ${bcl_dir}"
+        if [ ! -d "${params.bcl_dir}" ]; then
+            log_error "Missing BCL dir: ${params.bcl_dir}"
         fi
 
-        if [ ! -f "${preprocessed_sample_sheet}" ]; then
-            log_error "Missing sample sheet: ${preprocessed_sample_sheet}" >&2
+        if [ ! -f "${params.processed_sample_sheet}" ]; then
+            log_error "Missing sample sheet: ${params.processed_sample_sheet}" >&2
         fi
 
         # Verify that the output directory exist, if not create it
-        if [ ! -d "${qc_output_dir}" ]; then
-            log_warning "Output directory ${qc_output_dir} does not exist. Creating it."
-            mkdir -p "${qc_output_dir}"
+        if [ ! -d "${params.qc_output_dir}" ]; then
+            log_warning "Output directory ${params.qc_output_dir} does not exist. Creating it."
+            mkdir -p "${params.qc_output_dir}"
         fi
 
         log_ok "Input verification completed successfully"
@@ -113,73 +112,73 @@ process CELLRANGER_MKFASTQ {
         # Run Cellranger mkfastq
         # =============================================================================
 
-        log_start "Running cellranger mkfastq for run_id = ${run_id}..."
+        log_start "Running cellranger mkfastq for run_id = ${params.run_id}..."
 
         # See if run_ID is FlowCellID HCHNTDMX2 or CelineID 260323_A01789_0447_AHCHNTDMX2 (I think FlowCellID HCHNTDMX2 is better)
         /labos/UGM/dev/${params.cellranger_version}/bin/cellranger mkfastq \\
-            --run="${bcl_dir}" \\
-            --id="${run_id}" \\
-            --csv="${preprocessed_sample_sheet}" \\
-            --output-dir=fastq_output_${run_id} \\
+            --run="${params.bcl_dir}" \\
+            --id="${params.run_id}" \\
+            --csv="${params.processed_sample_sheet}" \\
+            --output-dir=fastq_output_${params.bcl_id} \\
             --localcores=${params.cpu_limit} \\
             --localmem=${params.memory_limit}
 
-        log_ok "Cellranger mkfastq finished for run_id = ${run_id}"
+        log_ok "Cellranger mkfastq finished for run_id = ${params.run_id}"
 
         # -----------------------------------------------------------------------
         # Verify successful execution
         # -----------------------------------------------------------------------
         log_verify "Verifying cellranger mkfastq output..."
 
-        if [ ! -d "fastq_output_${run_id}" ]; then
-            log_error "Cellranger mkfastq did not generate the expected output directory: fastq_output_${run_id}/" >&2
+        if [ ! -d "fastq_output_${params.bcl_id}" ]; then
+            log_error "Cellranger mkfastq did not generate the expected output directory: fastq_output_${params.bcl_id}/" >&2
         fi
 
         # Commented because fastq are sometimes generated but verification is too soon and it fails
-        #if ! find "fastq_output_${run_id}" -name "*.fastq.gz" | grep -q .; then
-        #    log_error "No FASTQ files were generated in fastq_output_${run_id}/" >&2
+        #if ! find "fastq_output_${params.bcl_id}" -name "*.fastq.gz" | grep -q .; then
+        #    log_error "No FASTQ files were generated in fastq_output_${params.bcl_id}/" >&2
         #fi
 
         log_ok "Verified cellranger mkfastq output successfully"
 
-        log_save "Cellranger mkfastq completed successfully for run_id = ${run_id} with \$FASTQ_COUNT FASTQ files generated in ${qc_output_dir}/fastq_output_${run_id}/"
+        log_save "Cellranger mkfastq completed successfully for run_id = ${params.run_id} with FASTQ files published in ${params.qc_output_dir}/fastq_output_${params.bcl_id}/"
 
         # -----------------------------------------------------------------------
         # Record tool version
         # -----------------------------------------------------------------------
         log_start "Recording tool versions for reproducibility..."
 
-        cat <<-END_VERSIONS > 2_cellranger_mkfastq_versions.yml
+        cat <<-END_VERSIONS > Cellranger_mkfastq_versions_${params.bcl_id}.yml
         "${task.process}":
             cellranger: \$(cellranger --version 2>&1 | grep -oP 'cellranger-\\K[0-9.]+')
         END_VERSIONS
 
-        log_ok "Tool versions recorded successfully in 2_cellranger_mkfastq_versions.yml"
+        log_ok "Tool versions recorded successfully in Cellranger_mkfastq_versions_${params.bcl_id}.yml"
 
         # -----------------------------------------------------------------------
         # End
         # -----------------------------------------------------------------------
         
-        log_save "Cellranger multi output fo run_id ${run_id} saved to ${qc_output_dir}/fastq_output_${run_id}/."
-        log_log "Versions information will be saved to ${params.run_traceability_log_dir}/${today_date}_versions.yaml"
-        log_log "Logs saved to ${qc_log_dir}/${today_date}_mkfastq_${run_id}.log"
+        log_save "Cellranger multi output fo run_id ${params.run_id} saved to ${params.qc_output_dir}/fastq_output_${params.bcl_id}/."
+        log_log "Versions information will be saved to ${params.run_traceability_log_dir}/Cellranger_mkfastq_versions_${params.bcl_id}.yml.yaml"
+        log_log "Logs saved to ${params.qc_log_dir}/Cellranger_mkfastq_log_${params.bcl_id}.log"
 
-        log_success "Cell Ranger mkfastq processed BCL to FASTQ successfully for run_id = ${run_id} and FASTQ files are available at ${params.qc_output_dir} !"
+        log_success "Cell Ranger mkfastq processed BCL to FASTQ successfully for run_id = ${params.run_id} and FASTQ files are available at ${params.qc_output_dir} !"
         """
     
     stub:
     """
-    mkdir -p fastq_output_${run_id}/lane1 logs
+    mkdir -p fastq_output_${params.bcl_id}/lane1 logs
     
     # Create dummy FASTQ files
-    touch fastq_output_${run_id}/lane1/${run_id}_S1_L001_R1_001.fastq.gz
-    touch fastq_output_${run_id}/lane1/${run_id}_S1_L001_R2_001.fastq.gz
+    touch fastq_output_${params.bcl_id}/lane1/${params.bcl_id}_S1_L001_R1_001.fastq.gz
+    touch fastq_output_${params.bcl_id}/lane1/${params.bcl_id}_S1_L001_R2_001.fastq.gz
     
     # Create minimal versions file
-    cat > 2_cellranger_mkfastq_versions.yml <<EOF
+    cat > Cellranger_mkfastq_versions_${params.bcl_id}.yml <<EOF
 "CELLRANGER_MKFASTQ":
     "cellranger": "${params.cellranger_version}"
-    "run_id": "${run_id}"
+    "run_id": "${params.run_id}"
 EOF
     """
 }
