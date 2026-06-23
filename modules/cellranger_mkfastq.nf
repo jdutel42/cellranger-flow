@@ -18,7 +18,7 @@
 process CELLRANGER_MKFASTQ {
 
     // Tag and label for logging and resource allocation
-    tag "CrMk_${params.bcl_id}_CellRanger_Mkfastq_${params.protocol_prefix}" // Log the run ID for traceability for "CrF" = "Cell Ranger mkFastq"
+    tag "CrMk_${params.bcl_id}_CellRanger_Mkfastq_${params.protocol_id}" // Log the run ID for traceability for "CrF" = "Cell Ranger mkFastq"
     label 'process_high' // Use a high resource label since this step can be computationally intensive
 
     // Container specification for reproducibility
@@ -42,7 +42,7 @@ process CELLRANGER_MKFASTQ {
 
     // Declare process inputs
     input:
-        val processed_sample_sheet // Preprocessed sample sheet path for input
+        val ch_processed_sample_sheet // Preprocessed sample sheet path for input
 
     // Output the generated FASTQ files, versions information, and logs
     output:
@@ -70,13 +70,13 @@ process CELLRANGER_MKFASTQ {
 
         log_info "
         ╔═══════════════════════════════════════════════════════════════════════════════╗
-        ║                         CellRanger mkfastq Process Script                    ║
+        ║                         CellRanger mkfastq Process Script                     ║
         ╠═══════════════════════════════════════════════════════════════════════════════╣
         ║ Logging input parameters:
         ║ - run_id: ${params.run_id}
         ║ - bcl_id: ${params.bcl_id}
         ║ - bcl_dir: ${params.bcl_dir}
-        ║ - sample_sheet: ${params.processed_sample_sheet}
+        ║ - sample_sheet: ${ch_processed_sample_sheet}
         ║ - cpus: ${params.cpu_limit}
         ║ - mem_gb: ${params.memory_limit}
         ║ - qc_output_dir: ${params.qc_output_dir}
@@ -96,8 +96,8 @@ process CELLRANGER_MKFASTQ {
             log_error "Missing BCL dir: ${params.bcl_dir}"
         fi
 
-        if [ ! -f "${params.processed_sample_sheet}" ]; then
-            log_error "Missing sample sheet: ${params.processed_sample_sheet}" >&2
+        if [ ! -f "${ch_processed_sample_sheet}" ]; then
+            log_error "Missing sample sheet: ${ch_processed_sample_sheet}" >&2
         fi
 
         # Verify that the output directory exist, if not create it
@@ -118,7 +118,7 @@ process CELLRANGER_MKFASTQ {
         /labos/UGM/dev/${params.cellranger_version}/bin/cellranger mkfastq \\
             --run="${params.bcl_dir}" \\
             --id="${params.run_id}" \\
-            --csv="${params.processed_sample_sheet}" \\
+            --csv="${ch_processed_sample_sheet}" \\
             --output-dir=fastq_output_${params.bcl_id} \\
             --localcores=${params.cpu_limit} \\
             --localmem=${params.memory_limit}

@@ -1,5 +1,5 @@
 process MERGE_VERSIONS {
-    tag "MrgV_${params.bcl_id}_Merge_Versions_${params.protocol_prefix}" // Log the run ID for traceability for "Mrg" = "Merge Versions"
+    tag "MrgV_${params.bcl_id}_Merge_Versions_${params.protocol_id}" // Log the run ID for traceability for "Mrg" = "Merge Versions"
 
     publishDir (
         path    : params.run_traceability_log_dir,

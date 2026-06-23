@@ -22,7 +22,7 @@ process PROCESSING_SAMPLE_SHEET {
     // Tag and label for logging and resource allocation
     // A task is 1 execution of 1 process for 1 set of inputs. for exemple, cellranger_multi with run_id = HCHNTDMX2 and batch_id = 74 is a task
     // A tag is useful to differentiate tasks of the same process (e.g. cellranger_multi) with different inputs (e.g. batch_id) and thus to have different log files and job names in SLURM. The tag is defined in the modules.
-    tag "PrSS_${params.bcl_id}_Processing_Sample_Sheet" // Log the name of the input sample sheet for "Pro" = "Processing sample-sheet"
+    tag "PrSS_${params.bcl_id}_Processing_Sample_Sheet_${params.protocol_id}" // Log the name of the input sample sheet for "Pro" = "Processing sample-sheet"
     label 'process_high' // Use a high resource label since this is a lightweight step
 
     // Publish the processed sample sheet to the output directory for reference

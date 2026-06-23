@@ -404,7 +404,7 @@ def validateParams() {
             error "[ERROR]: ❌ The --memory_limit parameter must be a positive integer. Invalid value: ${params.memory_limit}"
         } else {
             // If memory_limit is specified, it should not exceed default memory_limit (e.g., 64 GB) to prevent overloading the system. This is a safeguard, but can be adjusted based on the specific environment and needs.
-            if (params.memory_limit > 64) {
+            if (params.memory_limit > 80) {
                 log.warn "[WARNING]: ⚠️ The specified --memory_limit (${params.memory_limit} GB) exceeds the recommended maximum of 64 GB."
             }
         }
@@ -491,7 +491,7 @@ workflow {
         )
 
         // Capture outputs from CELLRANGER_MKFASTQ
-        ch_fastqs = CELLRANGER_MKFASTQ.out.ch_fastqs // Capture channel for generated FASTQ files
+        ch_fastqs = CELLRANGER_MKFASTQ.out.ch_fastqs.map { file(it).toRealPath() } // Capture channel (absolute paths) for generated FASTQ files
         ch_versions = ch_versions.mix(CELLRANGER_MKFASTQ.out.ch_versions) // Capture channel for versions information (mix for cumulation across steps)
     } else {
         ch_fastqs = channel.fromPath(params.fastqs_dir_path)
@@ -522,7 +522,7 @@ workflow {
         )
 
         // Capture outputs from CELLRANGER_MULTI
-        ch_multiqc_input = CELLRANGER_MULTI.out.ch_multi_ouput // Capture channel for MultiQC input (metrics summaries and web summaries)
+        ch_multiqc_input = CELLRANGER_MULTI.out.ch_multi_output // Capture channel for MultiQC input (metrics summaries and web summaries)
         ch_metrics = CELLRANGER_MULTI.out.ch_metrics // Capture channel for metrics summary
         ch_web_summaries = CELLRANGER_MULTI.out.ch_web_summaries // Capture channel for web summaries
         ch_versions = ch_versions.mix(CELLRANGER_MULTI.out.ch_versions) // Capture channel for versions information (mix for cumulation across steps)

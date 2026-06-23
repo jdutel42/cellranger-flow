@@ -12,16 +12,17 @@
         tuple path(fastq_dir), val(sample_id)
 
     Outputs :
-        tuple val(sample_id), path("multi_output/${sample_id}/outs/metrics_summary.csv") -> ch_metrics
-        tuple val(sample_id), path("multi_output/${sample_id}/outs/web_summary.html") -> ch_web_summaries
+        tuple val(sample_id), path("multi_output_${params.bcl_id}/${sample_id}/outs/metrics_summary.csv") -> ch_metrics
+        tuple val(sample_id), path("multi_output_${params.bcl_id}/${sample_id}/outs/web_summary.html") -> ch_web_summaries
         path "Cellranger_multi_versions_${params.bcl_id}_${sample_id}.yml" -> ch_versions
 ========================================================================================
 */
 
 process CELLRANGER_MULTI {
 
+
     // Tag and label for logging and resource allocation
-    tag "CrMu_${sample_id}_${params.bcl_id}_CellRanger_Multi_${params.protocol_prefix}" // Log the run ID for traceability for "CrM" = "Cell Ranger Multi"
+    tag "CrMu_${sample_id}_${params.bcl_id}_CellRanger_Multi_${params.protocol_id}" // Log the run ID for traceability for "CrM" = "Cell Ranger Multi"
     label 'process_high'
 
     // Use conda environment for reproducibility
@@ -93,34 +94,41 @@ process CELLRANGER_MULTI {
         
         log_verify "Verifying input files and directories..."
 
-        # Dynamically set FASTQ directories based on provided parameters or default to the fastq_dir from the channel
-        # If fastq_folder_gex, fastq_folder_vdj, or fastq_folder_adt are not provided, default fastq_dir to the provided fastq_dir from the channel
-        if [ -z "${params.fastq_folder_gex}" ]; then
-            FASTQ_GEX_DIR="${fastq_dir}"
+        # Verification of input files and directories
+        # If params.fastq_folder_gex, params.fastq_folder_vdj, and/or params.fastq_folder_adt are "null",
+        # fastq_dir will be used as the input for all library types
+        # If they are specified, they will be used as the input for their respective library types and fastq_dir will be ignored.
+        if [ "${params.fastq_folder_gex}" = "null" ] || [ -z "${params.fastq_folder_gex}" ]; then
+            FASTQ_GEX_DIR="\$(realpath ${fastq_dir})"
+            echo "fastq_folder_gex not specified, using: \$FASTQ_GEX_DIR"
         else
-            FASTQ_GEX_DIR="${params.fastq_folder_gex}"
+            FASTQ_GEX_DIR="\$(realpath ${params.fastq_folder_gex})"
+            echo "fastq_folder_gex specified, using: \$FASTQ_GEX_DIR"
         fi
-        if [ -z "${params.fastq_folder_vdj}" ]; then
-            FASTQ_VDJ_DIR="${fastq_dir}"
+        if [ "${params.fastq_folder_vdj}" = "null" ] || [ -z "${params.fastq_folder_vdj}" ]; then
+            FASTQ_VDJ_DIR="\$(realpath ${fastq_dir})"
+            echo "fastq_folder_vdj not specified, using: \$FASTQ_VDJ_DIR"
         else
-            FASTQ_VDJ_DIR="${params.fastq_folder_vdj}"
+            FASTQ_VDJ_DIR="\$(realpath ${params.fastq_folder_vdj})"
+            echo "fastq_folder_vdj specified, using: \$FASTQ_VDJ_DIR"
         fi
-        if [ -z "${params.fastq_folder_adt}" ]; then
-            FASTQ_ADT_DIR="${fastq_dir}"
+        if [ "${params.fastq_folder_adt}" = "null" ] || [ -z "${params.fastq_folder_adt}" ]; then
+            FASTQ_ADT_DIR="\$(realpath ${fastq_dir})"
+            echo "fastq_folder_adt not specified, using: \$FASTQ_ADT_DIR"
         else
-            FASTQ_ADT_DIR="${params.fastq_folder_adt}"
+            FASTQ_ADT_DIR="\$(realpath ${params.fastq_folder_adt})"
+            echo "fastq_folder_adt specified, using: \$FASTQ_ADT_DIR"
         fi
 
-        # Verification of input files and directories
-        if [ ! -d "\${FASTQ_GEX_DIR}" ]; then
-            log_error "FASTQ GEX directory does not exist: \${FASTQ_GEX_DIR}"
-        fi
-        if [ ! -d "\${FASTQ_VDJ_DIR}" ]; then
-            log_error "FASTQ VDJ directory does not exist: \${FASTQ_VDJ_DIR}"
-        fi
-        if [ ! -d "\${FASTQ_ADT_DIR}" ]; then
-            log_error "FASTQ ADT directory does not exist: \${FASTQ_ADT_DIR}"
-        fi
+        #if [ ! -d ${params.fastq_folder_gex} ]; then
+        #    log_error "FASTQ GEX directory does not exist: ${params.fastq_folder_gex}"
+        #fi
+        #if [ ! -d ${params.fastq_folder_vdj} ]; then
+        #    log_error "FASTQ VDJ directory does not exist: ${params.fastq_folder_vdj}"
+        #fi
+        #if [ ! -d ${params.fastq_folder_adt} ]; then
+        #    log_error "FASTQ ADT directory does not exist: ${params.fastq_folder_adt}"
+        #fi
 
         # Verify that the FASTQ directories contain at least one FASTQ file
         # Note: Uncomment the following checks if you want to enforce the presence of FASTQ files
@@ -145,7 +153,7 @@ process CELLRANGER_MULTI {
         # Build the config file incrementally depending on requested libraries
         > "config_sample_${sample_id}.csv"
 
-        if [ ${params.gex} ]; then
+        if [ "${params.gex}" = "true" ]; then
             cat >> "config_sample_${sample_id}.csv" <<EOF
 [gene-expression]
 ref,${params.genome_reference_path}
@@ -154,14 +162,14 @@ no-secondary,FALSE
 EOF
         fi
 
-        if [ ${params.vdj} ]; then
+        if [ "${params.vdj}" = "true" ]; then
             cat >> "config_sample_${sample_id}.csv" <<EOF
 [vdj]
 ref,${params.vdj_reference_path}
 EOF
         fi
 
-        if [ ${params.adt} ]; then
+        if [ "${params.adt}" = "true" ]; then
             cat >> "config_sample_${sample_id}.csv" <<EOF
 [feature]
 ref,${params.adt_reference_path}
@@ -174,20 +182,20 @@ EOF
 fastq_id,fastqs,lanes,physical_library_id,feature_types,subsample_rate
 EOF
 
-        if [ ${params.gex} ]; then
+        if [ "${params.gex}" = "true" ]; then
             echo "${sample_id}_GEX,\$FASTQ_GEX_DIR,any,${sample_id}_GEX,Gene Expression," >> "config_sample_${sample_id}.csv"
         fi
 
-        if [ ${params.vdj} ]; then
+        if [ "${params.vdj}" = "true" ]; then
             echo "${sample_id}_VDJ,\$FASTQ_VDJ_DIR,any,${sample_id}_VDJ,VDJ," >> "config_sample_${sample_id}.csv"
         fi
 
-        if [ ${params.adt} ]; then
+        if [ "${params.adt}" = "true" ]; then
             echo "${sample_id}_ADT,\$FASTQ_ADT_DIR,any,${sample_id}_ADT,Antibody Capture," >> "config_sample_${sample_id}.csv"
         fi
 
         # Add [samples] section with hashtag mappings if ADT is enabled
-        if [ ${params.adt} ] && [ -n "${params.adt_samples_hashtags}" ] && [ "${params.adt_samples_hashtags}" != "{}" ]; then
+        if [ "${params.adt}" = "true" ] && [ -n "${params.adt_samples_hashtags}" ] && [ "${params.adt_samples_hashtags}" != "{}" ]; then
             cat >> "config_sample_${sample_id}.csv" <<EOF
 [samples]
 sample_id,hashtag_ids
@@ -220,14 +228,14 @@ EOF
 
         log_verify "Verifying cellranger multi output for ${sample_id}..."
 
-        mv "${sample_id}" "multi_output/${sample_id}"
+        mv "${sample_id}" "multi_output_/${sample_id}"
 
         # Verify key outputs exist
-        if [ ! -f "multi_output/${sample_id}/outs/per_sample_outs/${sample_id}/metrics_summary.csv" ]; then
+        if [ ! -f "multi_output_${params.bcl_id}/${sample_id}/outs/per_sample_outs/${sample_id}/metrics_summary.csv" ]; then
             log_error "Missing metrics_summary.csv"
         fi
 
-        if [ ! -f "multi_output/${sample_id}/outs/per_sample_outs/${sample_id}/web_summary.html" ]; then
+        if [ ! -f "multi_output_${params.bcl_id}/${sample_id}/outs/per_sample_outs/${sample_id}/web_summary.html" ]; then
             log_error "Missing web_summary.html"
         fi
 
@@ -252,7 +260,7 @@ EOF
         # End
         # -----------------------------------------------------------------------
 
-        log_save "Cellranger multi output fo run_id ${params.run_id} & sample_id ${sample_id} saved to ${params.alignment_output_dir}/multi_output/${sample_id}/."
+        log_save "Cellranger multi output fo run_id ${params.run_id} & sample_id ${sample_id} saved to ${params.alignment_output_dir}/multi_output_${params.bcl_id}/${sample_id}/."
         log_log "Versions information will be saved to ${params.run_traceability_log_dir}/Cellranger_multi_versions_${params.bcl_id}_${sample_id}.yml"
 
         log_log "Logs saved to ${params.alignment_log_dir}/Cellranger_multi_log_${params.bcl_id}_${sample_id}.log"
@@ -262,10 +270,10 @@ EOF
 
     stub:
     """
-    mkdir -p multi_output/${sample_id}/outs logs
+    mkdir -p multi_output_${params.bcl_id}/${sample_id}/outs logs
     
     # Create minimal metrics CSV
-    cat > multi_output/${sample_id}/outs/metrics_summary.csv <<EOF
+    cat > multi_output_${params.bcl_id}/${sample_id}/outs/metrics_summary.csv <<EOF
 Metric,Value
 "Estimated Number of Cells","1000"
 "Mean Reads per Cell","50000"
@@ -273,7 +281,7 @@ Metric,Value
 EOF
     
     # Create minimal HTML report
-    cat > multi_output/${sample_id}/outs/web_summary.html <<EOF
+    cat > multi_output_${params.bcl_id}/${sample_id}/outs/web_summary.html <<EOF
 <!DOCTYPE html>
 <html>
 <head><title>Cell Ranger Multi Report - ${sample_id}</title></head>

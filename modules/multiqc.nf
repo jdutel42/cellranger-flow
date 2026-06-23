@@ -18,7 +18,7 @@
 
 process MULTIQC {
 
-    tag "MQC_${params.bcl_id}_MultiQC_${params.protocol_prefix}" // Log the run ID for traceability for "MQC" = "MultiQC"
+    tag "MQC_${params.bcl_id}_MultiQC_${params.protocol_id}" // Log the run ID for traceability for "MQC" = "MultiQC"
     label 'process_high' // Label for resource allocation
 
     // Use the shared conda environment available on the cluster
