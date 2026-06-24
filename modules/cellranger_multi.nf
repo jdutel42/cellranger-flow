@@ -228,7 +228,7 @@ EOF
 
         log_verify "Verifying cellranger multi output for ${sample_id}..."
 
-        mv "${sample_id}" "multi_output_/${sample_id}"
+        mv "${sample_id}" "multi_output_${params.bcl_id}/${sample_id}"
 
         # Verify key outputs exist
         if [ ! -f "multi_output_${params.bcl_id}/${sample_id}/outs/per_sample_outs/${sample_id}/metrics_summary.csv" ]; then
